@@ -1,6 +1,8 @@
+using System.IO;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using StockAutoTrader.App.Services;
 using StockAutoTrader.Core.Interfaces;
 using StockAutoTrader.Core.Strategies;
 using StockAutoTrader.Infrastructure.Data;
