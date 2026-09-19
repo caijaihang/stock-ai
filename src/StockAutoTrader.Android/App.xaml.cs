@@ -6,4 +6,5 @@ namespace StockAutoTrader.Android;
 /// </summary>
 public partial class App : MauiApplication
 {
+    protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 }
