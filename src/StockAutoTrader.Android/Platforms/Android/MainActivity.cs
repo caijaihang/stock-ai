@@ -1,5 +1,7 @@
 using Android.App;
+using Android.Content;
 using Android.Content.PM;
+using Android.Content.Res;
 using Android.OS;
 
 namespace StockAutoTrader.Android;
@@ -33,13 +35,14 @@ public class MainActivity : MauiAppCompatActivity
     /// </summary>
     private void RequestNotificationPermission()
     {
-        if (Build.VERSION.SdkInt >= AndroidVersionCodes.Tiramisu)
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
         {
             var permission = Manifest.Permission.PostNotifications;
-            if (CheckSelfPermission(permission) != PackageManager.PermissionGranted)
+            if (CheckSelfPermission(permission) == PackageManager.PERMISSION_GRANTED)
             {
-                RequestPermissions(new[] { permission }, 0);
+                return;
             }
+            RequestPermissions(new[] { permission }, 0);
         }
     }
 }
