@@ -22,8 +22,9 @@ public class TongHuaShunMarketDataProvider : IMarketDataProvider, IDisposable
 {
     private readonly string _csvDirectory;
     private readonly ConcurrentDictionary<string, MarketDataSnapshot> _snapshots = new();
-    private readonly FileSystemWatcher? _csvWatcher;
-    private readonly FileSystemWatcher? _txtWatcher;
+    private readonly object _watcherLock = new();
+    private FileSystemWatcher? _csvWatcher;
+    private FileSystemWatcher? _txtWatcher;
 
     /// <summary>
     /// 行情源名称
@@ -56,8 +57,11 @@ public class TongHuaShunMarketDataProvider : IMarketDataProvider, IDisposable
     {
         IsConnected = true;
 
-        _csvWatcher = CreateWatcher("*.csv");
-        _txtWatcher = CreateWatcher("*.txt");
+        lock (_watcherLock)
+        {
+            _csvWatcher = CreateWatcher("*.csv");
+            _txtWatcher = CreateWatcher("*.txt");
+        }
 
         // 预载目录里已有的文件
         foreach (var file in Directory.GetFiles(_csvDirectory, "*.csv"))
@@ -78,15 +82,20 @@ public class TongHuaShunMarketDataProvider : IMarketDataProvider, IDisposable
     public Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         IsConnected = false;
-        if (_csvWatcher != null)
+        lock (_watcherLock)
         {
-            _csvWatcher.EnableRaisingEvents = false;
-            _csvWatcher.Dispose();
-        }
-        if (_txtWatcher != null)
-        {
-            _txtWatcher.EnableRaisingEvents = false;
-            _txtWatcher.Dispose();
+            if (_csvWatcher != null)
+            {
+                _csvWatcher.EnableRaisingEvents = false;
+                _csvWatcher.Dispose();
+                _csvWatcher = null;
+            }
+            if (_txtWatcher != null)
+            {
+                _txtWatcher.EnableRaisingEvents = false;
+                _txtWatcher.Dispose();
+                _txtWatcher = null;
+            }
         }
         return Task.CompletedTask;
     }
@@ -280,7 +289,12 @@ public class TongHuaShunMarketDataProvider : IMarketDataProvider, IDisposable
 
     public void Dispose()
     {
-        _csvWatcher?.Dispose();
-        _txtWatcher?.Dispose();
+        lock (_watcherLock)
+        {
+            _csvWatcher?.Dispose();
+            _csvWatcher = null;
+            _txtWatcher?.Dispose();
+            _txtWatcher = null;
+        }
     }
 }

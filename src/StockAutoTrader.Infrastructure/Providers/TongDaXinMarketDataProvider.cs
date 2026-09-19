@@ -23,9 +23,8 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider, IDisposable
     private readonly string _csvDirectory;
     private readonly string _tdxInstallDirectory;
     private readonly ConcurrentDictionary<string, MarketDataSnapshot> _snapshots = new();
-    private readonly Dictionary<string, decimal> _previousCloseCache = new();
-    private readonly FileSystemWatcher? _watcher;
-    private readonly object _cacheLock = new();
+    private readonly object _watcherLock = new();
+    private FileSystemWatcher? _watcher;
 
     /// <summary>
     /// 行情源名称
@@ -58,16 +57,19 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider, IDisposable
     public Task ConnectAsync(CancellationToken cancellationToken = default)
     {
         IsConnected = true;
-        if (_watcher == null)
+        lock (_watcherLock)
         {
-            _watcher = new FileSystemWatcher(_csvDirectory, "*.csv")
+            if (_watcher == null)
             {
-                IncludeSubdirectories = false,
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size
-            };
-            _watcher.Changed += OnCsvChanged;
-            _watcher.Created += OnCsvChanged;
-            _watcher.EnableRaisingEvents = true;
+                _watcher = new FileSystemWatcher(_csvDirectory, "*.csv")
+                {
+                    IncludeSubdirectories = false,
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size
+                };
+                _watcher.Changed += OnCsvChanged;
+                _watcher.Created += OnCsvChanged;
+                _watcher.EnableRaisingEvents = true;
+            }
         }
 
         // 预载目录里已有的 CSV
@@ -85,10 +87,14 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider, IDisposable
     public Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         IsConnected = false;
-        if (_watcher != null)
+        lock (_watcherLock)
         {
-            _watcher.EnableRaisingEvents = false;
-            _watcher.Dispose();
+            if (_watcher != null)
+            {
+                _watcher.EnableRaisingEvents = false;
+                _watcher.Dispose();
+                _watcher = null;
+            }
         }
         return Task.CompletedTask;
     }
@@ -100,7 +106,7 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider, IDisposable
     {
         if (_snapshots.TryGetValue(stockCode, out var cached) && cached.Timestamp > DateTime.Now.AddMinutes(-5))
         {
-            return Task.FromResult(cached as MarketDataSnapshot?);
+            return Task.FromResult(cached);
         }
 
         // 回退：读取 .day 文件提供 EOD 数据
@@ -296,6 +302,10 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider, IDisposable
 
     public void Dispose()
     {
-        _watcher?.Dispose();
+        lock (_watcherLock)
+        {
+            _watcher?.Dispose();
+            _watcher = null;
+        }
     }
 }
