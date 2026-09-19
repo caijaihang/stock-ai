@@ -83,10 +83,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
 
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
@@ -98,8 +98,8 @@ jobs:
         run: |
           dotnet build src/StockAutoTrader.Android/StockAutoTrader.Android.csproj \
             -c Release \
-            -f net8.0-android \
-            /p:AndroidUseRuntimeCheck=false
+            -f net9.0-android \
+            /p:IgnoreEolTargetFramework=true
 
       - name: Upload APK artifact
         if: startsWith(github.ref, 'refs/tags/')
@@ -107,4 +107,4 @@ jobs:
         with:
           name: StockAutoTrader-android
           path: |
-            src/StockAutoTrader.Android/bin/Release/net8.0-android/**/*.apk
+            src/StockAutoTrader.Android/bin/Release/net9.0-android/**/*.apk
