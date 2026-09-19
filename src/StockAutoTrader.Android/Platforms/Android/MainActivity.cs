@@ -35,10 +35,10 @@ public class MainActivity : MauiAppCompatActivity
     /// </summary>
     private void RequestNotificationPermission()
     {
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
+        if (Build.VERSION.SdkInt >= AndroidVersionCodes.Tiramisu)
         {
             var permission = Manifest.Permission.PostNotifications;
-            if (CheckSelfPermission(permission) == PackageManager.PERMISSION_GRANTED)
+            if (CheckSelfPermission(permission) == PackageManager.PermissionGranted)
             {
                 return;
             }
