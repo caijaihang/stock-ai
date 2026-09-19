@@ -16,9 +16,8 @@ public class TradingDbContext : DbContext
 
     public TradingDbContext()
     {
-        var folder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "StockAutoTrader");
+        // 便携版：默认数据库写到程序解压目录的 data/ 子目录，不存 C 盘
+        var folder = StockAutoTrader.Core.PortablePathHelper.GetDataDirectory();
         Directory.CreateDirectory(folder);
         DbPath = Path.Combine(folder, "stock_auto_trader.db");
     }

@@ -15,8 +15,11 @@ public static class MarketDataProviderFactory
     {
         return settings.MarketDataProvider.ToLowerInvariant() switch
         {
-            "tongdaxin" => new TongDaXinMarketDataProvider(settings.TongDaXinExportDirectory),
-            "tonghuashun" => new TongHuaShunMarketDataProvider(settings.TongHuaShunExportDirectory),
+            "tongdaxin" => new TongDaXinMarketDataProvider(
+                settings.ResolveTongDaXinExportDirectory(),
+                settings.TdxInstallDirectory),
+            "tonghuashun" => new TongHuaShunMarketDataProvider(
+                settings.ResolveTongHuaShunExportDirectory()),
             _ => new SimulatedMarketDataProvider(0.005)
         };
     }

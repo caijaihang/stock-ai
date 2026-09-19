@@ -28,6 +28,11 @@ public interface IOrderManager
     Task<IReadOnlyList<Order>> GetAllOrdersAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 根据订单号查询委托
+    /// </summary>
+    Task<Order?> GetOrderAsync(string orderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 查询今日委托
     /// </summary>
     Task<IReadOnlyList<Order>> GetTodayOrdersAsync(CancellationToken cancellationToken = default);

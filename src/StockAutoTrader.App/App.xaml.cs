@@ -48,18 +48,18 @@ public partial class App : Application
         var settings = LoadSettings();
         services.AddSingleton(settings);
 
-        // 数据库上下文工厂（WPF 后台线程与 UI 线程安全共享）
+        // 数据库上下文工厂（WPF 后台线程与 UI 线程安全共享，便携目录）
         services.AddDbContextFactory<TradingDbContext>(options =>
         {
-            options.UseSqlite($"Data Source={settings.DatabasePath}");
+            options.UseSqlite($"Data Source={settings.ResolveDatabasePath()}");
         });
 
-        // 日志
+        // 日志（便携目录）
         services.AddSingleton<ILoggerService>(provider =>
         {
             var factory = provider.GetRequiredService<IDbContextFactory<TradingDbContext>>();
             using var context = factory.CreateDbContext();
-            return new SerilogLoggerService(settings.LogDirectory, context);
+            return new SerilogLoggerService(settings.ResolveLogDirectory(), context);
         });
 
         // 数据仓储
@@ -90,21 +90,26 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 加载应用设置
+    /// 加载应用设置（优先从程序目录的 appsettings.json 读取，便携版）
     /// </summary>
     private static ServiceSettings LoadSettings()
     {
-        var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+        // 优先使用便携目录下的 appsettings.json（与 exe 同级）
+        var configPath = StockAutoTrader.Core.PortablePathHelper.GetConfigPath();
         if (File.Exists(configPath))
         {
             try
             {
                 var json = File.ReadAllText(configPath);
-                return System.Text.Json.JsonSerializer.Deserialize<ServiceSettings>(json) ?? new ServiceSettings();
+                var loaded = System.Text.Json.JsonSerializer.Deserialize<ServiceSettings>(json);
+                if (loaded != null)
+                {
+                    return loaded;
+                }
             }
             catch
             {
-                return new ServiceSettings();
+                // 解析失败时回退默认设置
             }
         }
         return new ServiceSettings();

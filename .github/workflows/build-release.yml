@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-release:
+  build-windows:
     name: Build WPF App & Release
     runs-on: windows-latest
     permissions:
@@ -50,24 +50,61 @@ jobs:
       - name: Create release artifact (zip)
         run: |
           Compress-Archive -Path "./dist/StockAutoTrader-windows-x64/*" -DestinationPath "StockAutoTrader-windows-x64.zip" -Force
-          Write-Host "Built artifact for ref: ${{ github.ref }}"
+          Write-Host "Built artifact for ref: ${{ github.ref_name }}"
 
-      # 仅在 tag 推送或手动触发时创建 GitHub Release（不经过 artifact）
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+      # 只在 tag 推送时创建 GitHub Release
+      - name: Create GitHub Release (tag only)
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             StockAutoTrader-windows-x64.zip
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('dev-{0}', github.run_number) }}
+          tag_name: ${{ github.ref_name }}
           name: "StockAutoTrader ${{ github.ref_name }}"
           generate_release_notes: false
           draft: false
           body: |
             ## 自动构建产物
 
-            - 平台：Windows x64
+            - 平台：Windows x64（便携版，数据全部存到解压目录）
             - 格式：单文件 self-contained exe
-            - 构建方式：GitHub Actions `build-release.yml`
+            - 行情：支持通达信 .day 文件 / CSV 导出、同花顺 CSV 导出
+            - 交易：支持 Simulated（模拟撮合）/ Real（文件桥接真实交易）
 
             解压后直接运行 `StockAutoTrader.App.exe`。
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          target-level: 34
+
+      - name: Build Android APK
+        run: |
+          dotnet build src/StockAutoTrader.Android/StockAutoTrader.Android.csproj \
+            -c Release \
+            -f net8.0-android \
+            /p:AndroidUseRuntimeCheck=false
+
+      - name: Upload APK artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: StockAutoTrader-android
+          path: |
+            src/StockAutoTrader.Android/bin/Release/net8.0-android/**/*.apk

@@ -25,6 +25,17 @@ public static class TradeExecutorFactory
 
         return settings.TradeExecutor.ToLowerInvariant() switch
         {
+            "real" => new RealTradeExecutor(
+                orderManager,
+                positionManager,
+                accountManager,
+                contextFactory,
+                logger,
+                notificationService,
+                settings.ResolvePendingOrdersDirectory(),
+                settings.ResolveFilledOrdersDirectory(),
+                settings.CommissionRate),
+
             _ => new SimulatedTradeExecutor(
                 orderManager,
                 positionManager,

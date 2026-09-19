@@ -1,16 +1,31 @@
+using System.Collections.Concurrent;
 using System.Globalization;
+using System.IO;
+using System.Text;
 using StockAutoTrader.Core.Interfaces;
 using StockAutoTrader.Core.Models;
 
 namespace StockAutoTrader.Infrastructure.Providers;
 
 /// <summary>
-/// 通达信行情数据提供器（预留适配层）
+/// 通达信行情数据提供器（真实本地数据读取）
+///
+/// 支持两种数据源：
+///   1. .day 二进制日数据文件：直接读取通达信安装目录 vipdoc/&lt;market&gt;/lday/&lt;code&gt;.day
+///      提供收盘价、昨收、开高低、成交量（真实历史数据，EOD 级别）
+///   2. CSV 实时导出文件：用户在通达信里导出实时行情 CSV，放到 data/market 目录，
+///      程序用 FileSystemWatcher 监听并解析，提供盘中实时快照
+///
+/// 涨跌幅 = (最新价 - 昨收) / 昨收 * 100
 /// </summary>
-public class TongDaXinMarketDataProvider : IMarketDataProvider
+public class TongDaXinMarketDataProvider : IMarketDataProvider, IDisposable
 {
-    private readonly string _exportDirectory;
-    private readonly HttpClient _httpClient;
+    private readonly string _csvDirectory;
+    private readonly string _tdxInstallDirectory;
+    private readonly ConcurrentDictionary<string, MarketDataSnapshot> _snapshots = new();
+    private readonly Dictionary<string, decimal> _previousCloseCache = new();
+    private readonly FileSystemWatcher? _watcher;
+    private readonly object _cacheLock = new();
 
     /// <summary>
     /// 行情源名称
@@ -30,18 +45,37 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider
     /// <summary>
     /// 构造函数
     /// </summary>
-    public TongDaXinMarketDataProvider(string exportDirectory)
+    public TongDaXinMarketDataProvider(string csvDirectory, string tdxInstallDirectory = "")
     {
-        _exportDirectory = exportDirectory;
-        _httpClient = new HttpClient();
+        _csvDirectory = csvDirectory;
+        _tdxInstallDirectory = tdxInstallDirectory;
+        Directory.CreateDirectory(_csvDirectory);
     }
 
     /// <summary>
-    /// 连接行情源
+    /// 连接行情源（启动文件监听）
     /// </summary>
     public Task ConnectAsync(CancellationToken cancellationToken = default)
     {
         IsConnected = true;
+        if (_watcher == null)
+        {
+            _watcher = new FileSystemWatcher(_csvDirectory, "*.csv")
+            {
+                IncludeSubdirectories = false,
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size
+            };
+            _watcher.Changed += OnCsvChanged;
+            _watcher.Created += OnCsvChanged;
+            _watcher.EnableRaisingEvents = true;
+        }
+
+        // 预载目录里已有的 CSV
+        foreach (var file in Directory.GetFiles(_csvDirectory, "*.csv"))
+        {
+            TryLoadCsv(file);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -51,22 +85,33 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider
     public Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         IsConnected = false;
+        if (_watcher != null)
+        {
+            _watcher.EnableRaisingEvents = false;
+            _watcher.Dispose();
+        }
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// 获取单只股票快照（优先读取本地 CSV/TXT 导出文件）
+    /// 获取单只股票快照（优先 CSV 实时，回退 .day 收盘数据）
     /// </summary>
-    public async Task<MarketDataSnapshot?> GetSnapshotAsync(string stockCode, CancellationToken cancellationToken = default)
+    public Task<MarketDataSnapshot?> GetSnapshotAsync(string stockCode, CancellationToken cancellationToken = default)
     {
-        var filePath = Path.Combine(_exportDirectory, $"{stockCode}.csv");
-        if (File.Exists(filePath))
+        if (_snapshots.TryGetValue(stockCode, out var cached) && cached.Timestamp > DateTime.Now.AddMinutes(-5))
         {
-            return await ReadFromCsvAsync(filePath, stockCode, cancellationToken);
+            return Task.FromResult(cached as MarketDataSnapshot?);
         }
 
-        // 预留：可通过通达信公开接口或本地 DDE 获取
-        return await Task.FromResult<MarketDataSnapshot?>(null);
+        // 回退：读取 .day 文件提供 EOD 数据
+        var daySnapshot = TryReadDayFile(stockCode);
+        if (daySnapshot != null)
+        {
+            _snapshots[stockCode] = daySnapshot;
+            return Task.FromResult(daySnapshot);
+        }
+
+        return Task.FromResult(_snapshots.TryGetValue(stockCode, out var s) ? s : null);
     }
 
     /// <summary>
@@ -87,42 +132,170 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider
     }
 
     /// <summary>
-    /// 从 CSV 文件读取行情快照
+    /// CSV 文件变更回调
     /// </summary>
-    private static async Task<MarketDataSnapshot?> ReadFromCsvAsync(string filePath, string stockCode, CancellationToken cancellationToken)
+    private void OnCsvChanged(object sender, FileSystemEventArgs e)
+    {
+        if (!string.Equals(e.Name, Path.GetFileName(e.FullPath), StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+        TryLoadCsv(e.FullPath);
+    }
+
+    /// <summary>
+    /// 尝试加载 CSV 文件到缓存
+    /// </summary>
+    private void TryLoadCsv(string filePath)
     {
         try
         {
-            var lines = await File.ReadAllLinesAsync(filePath, cancellationToken);
-            if (lines.Length < 2)
+            var snapshot = ReadFromCsv(filePath);
+            if (snapshot != null)
+            {
+                _snapshots[snapshot.StockCode] = snapshot;
+                OnMarketData?.Invoke(this, snapshot);
+            }
+        }
+        catch
+        {
+            // 文件正在写入时读取可能失败，忽略
+        }
+    }
+
+    /// <summary>
+    /// 从 CSV 文件读取行情快照
+    /// 支持格式：代码,名称,最新价,涨跌幅,昨收,开盘,最高,最低,成交量,时间
+    /// 也支持通达信导出格式：代码 名称 最新价 昨收 今开 最高 最低 成交量 成交额（制表符分隔）
+    /// </summary>
+    private static MarketDataSnapshot? ReadFromCsv(string filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            return null;
+        }
+
+        var lines = File.ReadAllLines(filePath, Encoding.UTF8).Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
+        if (lines.Count == 0)
+        {
+            return null;
+        }
+
+        // 取最后一行数据（跳过表头）
+        var lastLine = lines[^1];
+        string[] parts;
+
+        if (lastLine.Contains('\t'))
+        {
+            // 通达信制表符导出格式
+            parts = lastLine.Split('\t');
+            if (parts.Length < 9)
             {
                 return null;
             }
+            var code = parts[0].Trim();
+            var name = parts[1].Trim();
+            var price = ParseDecimal(parts[2]);
+            var prevClose = ParseDecimal(parts[3]);
+            var open = ParseDecimal(parts[4]);
+            var high = ParseDecimal(parts[5]);
+            var low = ParseDecimal(parts[6]);
+            var volume = long.TryParse(parts[7].Trim(), out var v) ? v : 0;
+            var changePct = prevClose > 0 ? (price - prevClose) / prevClose * 100m : 0m;
 
-            // 假设 CSV 格式：代码,名称,最新价,涨跌幅,昨收,开盘,最高,最低,成交量,时间
-            var parts = lines[^1].Split(',');
+            return new MarketDataSnapshot
+            {
+                StockCode = code,
+                StockName = name,
+                CurrentPrice = price,
+                ChangePercent = changePct,
+                PreviousClose = prevClose,
+                Open = open,
+                High = high,
+                Low = low,
+                Volume = volume,
+                Timestamp = DateTime.Now
+            };
+        }
+        else
+        {
+            // 逗号分隔格式：代码,名称,最新价,涨跌幅,昨收,开盘,最高,最低,成交量,时间
+            parts = lastLine.Split(',');
             if (parts.Length < 10)
             {
                 return null;
             }
+            var code = parts[0].Trim();
+            var name = parts[1].Trim();
+            var price = ParseDecimal(parts[2]);
+            var changePct = ParseDecimal(parts[3]);
+            var prevClose = ParseDecimal(parts[4]);
+            var open = ParseDecimal(parts[5]);
+            var high = ParseDecimal(parts[6]);
+            var low = ParseDecimal(parts[7]);
+            var volume = long.TryParse(parts[8].Trim(), out var v2) ? v2 : 0;
 
             return new MarketDataSnapshot
             {
-                StockCode = parts[0].Trim(),
-                StockName = parts[1].Trim(),
-                CurrentPrice = decimal.TryParse(parts[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var p) ? p : 0,
-                ChangePercent = decimal.TryParse(parts[3].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var c) ? c : 0,
-                PreviousClose = decimal.TryParse(parts[4].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var pc) ? pc : 0,
-                Open = decimal.TryParse(parts[5].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var o) ? o : 0,
-                High = decimal.TryParse(parts[6].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var h) ? h : 0,
-                Low = decimal.TryParse(parts[7].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var l) ? l : 0,
-                Volume = long.TryParse(parts[8].Trim(), out var v) ? v : 0,
-                Timestamp = DateTime.TryParse(parts[9].Trim(), out var t) ? t : DateTime.Now
+                StockCode = code,
+                StockName = name,
+                CurrentPrice = price,
+                ChangePercent = changePct,
+                PreviousClose = prevClose,
+                Open = open,
+                High = high,
+                Low = low,
+                Volume = volume,
+                Timestamp = DateTime.Now
             };
         }
-        catch
+    }
+
+    /// <summary>
+    /// 读取 .day 日数据文件（通达信本地真实收盘数据）
+    /// </summary>
+    private MarketDataSnapshot? TryReadDayFile(string stockCode)
+    {
+        if (string.IsNullOrWhiteSpace(_tdxInstallDirectory))
         {
             return null;
         }
+
+        var dayFilePath = TdxDayFileReader.ResolveDayFilePath(_tdxInstallDirectory, stockCode);
+        var lastClose = TdxDayFileReader.ReadLastClose(dayFilePath);
+        if (lastClose == null)
+        {
+            return null;
+        }
+
+        // 读取最后两条记录获取昨收
+        var records = TdxDayFileReader.ReadLastNDays(dayFilePath, 2);
+        var prevClose = records.Count >= 2 ? records[^2].Close : records[^1].Open;
+
+        return new MarketDataSnapshot
+        {
+            StockCode = stockCode,
+            StockName = stockCode,
+            CurrentPrice = lastClose.Value,
+            PreviousClose = prevClose,
+            ChangePercent = prevClose > 0 ? (lastClose.Value - prevClose) / prevClose * 100m : 0m,
+            Open = records.Count > 0 ? records[^1].Open : 0,
+            High = records.Count > 0 ? records[^1].High : 0,
+            Low = records.Count > 0 ? records[^1].Low : 0,
+            Volume = records.Count > 0 ? (long)records[^1].Volume : 0,
+            Timestamp = DateTime.Now
+        };
+    }
+
+    private static decimal ParseDecimal(string value)
+    {
+        return decimal.TryParse(value.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var result)
+            ? result
+            : 0m;
+    }
+
+    public void Dispose()
+    {
+        _watcher?.Dispose();
     }
 }

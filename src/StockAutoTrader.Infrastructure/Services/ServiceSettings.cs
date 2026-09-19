@@ -41,22 +41,97 @@ public class ServiceSettings
     public bool T1Enabled { get; set; } = true;
 
     /// <summary>
-    /// 通达信导出目录
+    /// 通达信安装目录（用于读取 vipdoc 下的 .day 日数据文件）
     /// </summary>
-    public string TongDaXinExportDirectory { get; set; } = @"C:\TdxExport";
+    public string TdxInstallDirectory { get; set; } = @"";
 
     /// <summary>
-    /// 同花顺导出目录
+    /// 通达信行情文件目录（导出 CSV 放这里；留空则自动使用 data/market）
     /// </summary>
-    public string TongHuaShunExportDirectory { get; set; } = @"C:\ThsExport";
+    public string TongDaXinExportDirectory { get; set; } = "";
 
     /// <summary>
-    /// 日志目录
+    /// 同花顺行情文件目录（导出 CSV 放这里；留空则自动使用 data/market）
     /// </summary>
-    public string LogDirectory { get; set; } = @"Logs";
+    public string TongHuaShunExportDirectory { get; set; } = "";
 
     /// <summary>
-    /// 数据库路径
+    /// 日志目录（留空则自动使用程序目录下的 logs/）
     /// </summary>
-    public string DatabasePath { get; set; } = @"stock_auto_trader.db";
+    public string LogDirectory { get; set; } = "";
+
+    /// <summary>
+    /// 数据库路径（留空则自动使用程序目录下的 data/stock_auto_trader.db，便携版）
+    /// </summary>
+    public string DatabasePath { get; set; } = "";
+
+    /// <summary>
+    /// 待处理订单目录（留空则自动使用程序目录下的 data/orders/pending/）
+    /// </summary>
+    public string PendingOrdersDirectory { get; set; } = "";
+
+    /// <summary>
+    /// 已成交回报目录（留空则自动使用程序目录下的 data/orders/filled/）
+    /// </summary>
+    public string FilledOrdersDirectory { get; set; } = "";
+
+    /// <summary>
+    /// 解析数据库路径：留空则使用便携目录 data/stock_auto_trader.db
+    /// </summary>
+    public string ResolveDatabasePath()
+    {
+        return string.IsNullOrWhiteSpace(DatabasePath)
+            ? StockAutoTrader.Core.PortablePathHelper.GetDbPath()
+            : DatabasePath;
+    }
+
+    /// <summary>
+    /// 解析日志目录：留空则使用便携目录 logs/
+    /// </summary>
+    public string ResolveLogDirectory()
+    {
+        return string.IsNullOrWhiteSpace(LogDirectory)
+            ? StockAutoTrader.Core.PortablePathHelper.GetLogDirectory()
+            : LogDirectory;
+    }
+
+    /// <summary>
+    /// 解析通达信行情文件目录：留空则使用便携目录 data/market
+    /// </summary>
+    public string ResolveTongDaXinExportDirectory()
+    {
+        return string.IsNullOrWhiteSpace(TongDaXinExportDirectory)
+            ? StockAutoTrader.Core.PortablePathHelper.GetMarketDataDirectory()
+            : TongDaXinExportDirectory;
+    }
+
+    /// <summary>
+    /// 解析同花顺行情文件目录：留空则使用便携目录 data/market
+    /// </summary>
+    public string ResolveTongHuaShunExportDirectory()
+    {
+        return string.IsNullOrWhiteSpace(TongHuaShunExportDirectory)
+            ? StockAutoTrader.Core.PortablePathHelper.GetMarketDataDirectory()
+            : TongHuaShunExportDirectory;
+    }
+
+    /// <summary>
+    /// 解析待处理订单目录：留空则使用便携目录 data/orders/pending
+    /// </summary>
+    public string ResolvePendingOrdersDirectory()
+    {
+        return string.IsNullOrWhiteSpace(PendingOrdersDirectory)
+            ? StockAutoTrader.Core.PortablePathHelper.GetPendingOrdersDirectory()
+            : PendingOrdersDirectory;
+    }
+
+    /// <summary>
+    /// 解析已成交回报目录：留空则使用便携目录 data/orders/filled
+    /// </summary>
+    public string ResolveFilledOrdersDirectory()
+    {
+        return string.IsNullOrWhiteSpace(FilledOrdersDirectory)
+            ? StockAutoTrader.Core.PortablePathHelper.GetFilledOrdersDirectory()
+            : FilledOrdersDirectory;
+    }
 }

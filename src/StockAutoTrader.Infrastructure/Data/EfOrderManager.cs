@@ -73,6 +73,17 @@ public class EfOrderManager : IOrderManager
     }
 
     /// <summary>
+    /// 根据订单号查询委托
+    /// </summary>
+    public async Task<Order?> GetOrderAsync(string orderId, CancellationToken cancellationToken = default)
+    {
+        await using var context = _contextFactory.CreateDbContext();
+        return await context.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.OrderId == orderId, cancellationToken);
+    }
+
+    /// <summary>
     /// 查询今日委托
     /// </summary>
     public async Task<IReadOnlyList<Order>> GetTodayOrdersAsync(CancellationToken cancellationToken = default)
