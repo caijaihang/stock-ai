@@ -1,4 +1,5 @@
 using StockAutoTrader.Infrastructure.Providers;
+using Xunit;
 
 namespace StockAutoTrader.Tests.Providers;
 

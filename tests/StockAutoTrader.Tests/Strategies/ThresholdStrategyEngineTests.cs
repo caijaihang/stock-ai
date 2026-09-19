@@ -2,6 +2,7 @@ using StockAutoTrader.Core.Entities;
 using StockAutoTrader.Core.Enums;
 using StockAutoTrader.Core.Models;
 using StockAutoTrader.Core.Strategies;
+using Xunit;
 
 namespace StockAutoTrader.Tests.Strategies;
 

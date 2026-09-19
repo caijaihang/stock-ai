@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using StockAutoTrader.Core.Enums;
+using Xunit;
 using StockAutoTrader.Core.Interfaces;
 using StockAutoTrader.Infrastructure.Data;
 using StockAutoTrader.Infrastructure.Logging;
