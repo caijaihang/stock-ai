@@ -10,7 +10,7 @@ namespace StockAutoTrader.Infrastructure.Logging;
 /// </summary>
 public class SerilogLoggerService : ILoggerService, IDisposable
 {
-    private readonly ILogger _logger;
+    private readonly Logger _logger;
     private readonly TradingDbContext? _context;
 
     /// <summary>
