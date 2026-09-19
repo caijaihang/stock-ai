@@ -1,0 +1,42 @@
+[
+  {
+    "StockCode": "000001",
+    "StockName": "平安银行",
+    "Market": "Shenzhen",
+    "BenchmarkPriceType": "PreviousClose",
+    "CustomBenchmarkPrice": 0,
+    "BuyThresholdPercent": 2.0,
+    "SellThresholdPercent": 2.0,
+    "BuyQuantity": 100,
+    "SellQuantity": 100,
+    "CooldownSeconds": 60,
+    "MaxBuyTimesPerDay": 3,
+    "MaxSellTimesPerDay": 3,
+    "TradingHours": "09:30-11:30,13:00-15:00",
+    "T1Enabled": true,
+    "AllowRepeatBuy": true,
+    "AllowPartialSell": true,
+    "OrderType": "SimulatedImmediate",
+    "Status": "Running"
+  },
+  {
+    "StockCode": "600519",
+    "StockName": "贵州茅台",
+    "Market": "Shanghai",
+    "BenchmarkPriceType": "PreviousClose",
+    "CustomBenchmarkPrice": 0,
+    "BuyThresholdPercent": 1.5,
+    "SellThresholdPercent": 1.5,
+    "BuyQuantity": 10,
+    "SellQuantity": 10,
+    "CooldownSeconds": 120,
+    "MaxBuyTimesPerDay": 2,
+    "MaxSellTimesPerDay": 2,
+    "TradingHours": "09:30-11:30,13:00-15:00",
+    "T1Enabled": true,
+    "AllowRepeatBuy": false,
+    "AllowPartialSell": true,
+    "OrderType": "SimulatedImmediate",
+    "Status": "Running"
+  }
+]

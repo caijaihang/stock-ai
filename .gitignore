@@ -1,0 +1,15 @@
+bin/
+obj/
+dist/
+publish/
+logs/
+Logs/
+*.db
+*.db-shm
+*.db-wal
+*.user
+.vs/
+.idea/
+*.trx
+test-results/
+appsettings.local.json

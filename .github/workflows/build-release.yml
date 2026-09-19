@@ -1,0 +1,70 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    name: Build WPF App & Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet packages
+        run: dotnet restore StockAutoTrader.sln
+
+      - name: Run unit tests
+        run: dotnet test tests/StockAutoTrader.Tests/StockAutoTrader.Tests.csproj -c Release --logger "trx;LogFileName=test.trx"
+
+      - name: Build (Release)
+        run: dotnet build StockAutoTrader.sln -c Release
+
+      - name: Publish single-file WPF executable
+        run: >
+          dotnet publish src/StockAutoTrader.App/StockAutoTrader.App.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o ./dist/StockAutoTrader-windows-x64
+
+      - name: Create release artifacts
+        run: |
+          $version = "${{ github.ref_name }}"
+          if ($env:GITHUB_EVENT_NAME -eq "push" -and $env:GITHUB_REF -ne "refs/tags") {
+            $version = "dev-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+          }
+          Compress-Archive -Path "./dist/StockAutoTrader-windows-x64/*" -DestinationPath "StockAutoTrader-windows-x64.zip" -Force
+          $zip = "./StockAutoTrader-windows-x64.zip"
+          Write-Host "Creating release $version ..."
+          gh release create "$version" "$zip" --title "StockAutoTrader $version" --notes "Windows x64 single-file build (auto-generated)"
+          # Save version for summary
+          Write-Host "$version" > ./version.txt
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StockAutoTrader-windows-x64
+          path: ./StockAutoTrader-windows-x64.zip
