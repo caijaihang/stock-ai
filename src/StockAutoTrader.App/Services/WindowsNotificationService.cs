@@ -10,11 +10,11 @@ namespace StockAutoTrader.App.Services;
 /// </summary>
 public class WindowsNotificationService : INotificationService
 {
-    private readonly SystemSounds _buySound = SystemSounds.Beep;
-    private readonly SystemSounds _sellSound = SystemSounds.Exclamation;
-    private readonly SystemSounds _infoSound = SystemSounds.Asterisk;
     private readonly Dispatcher _dispatcher;
 
+    /// <summary>
+    /// 构造函数
+    /// </summary>
     public WindowsNotificationService()
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
@@ -32,7 +32,7 @@ public class WindowsNotificationService : INotificationService
         // 1. 声音
         if (SoundEnabled)
         {
-            PlaySound(isBuy ? _buySound : (isBuy ? _sellSound : _infoSound));
+            PlaySound(isBuy ? SystemSounds.Beep : SystemSounds.Exclamation);
         }
 
         // 2. 弹窗（可选）
