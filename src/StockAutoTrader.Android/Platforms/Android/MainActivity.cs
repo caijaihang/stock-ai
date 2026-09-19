@@ -1,23 +1,26 @@
-using Android.Content.Res;
+using Android.App;
+using Android.Content.PM;
 using Android.OS;
 
 namespace StockAutoTrader.Android;
 
 /// <summary>
-/// Android 主 Activity（MAUI 标准写法）
+/// Android 主 Activity（.NET MAUI 官方模板标准写法）
 /// </summary>
-[Android.App.Activity(
+[Activity(
     Theme = "@style/MainTheme",
-    ConfigurationChanges = Android.Content.Res.ConfigChanges.ScreenSize |
-                          Android.Content.Res.ConfigChanges.Orientation |
-                          Android.Content.Res.ConfigChanges.UiMode |
-                          Android.Content.Res.ConfigChanges.ScreenLayout |
-                          Android.Content.Res.ConfigChanges.SmallestScreenSize |
-                          Android.Content.Res.ConfigChanges.Density)]
-public class MainActivity : MauiAppActivity
+    MainLauncher = true,
+    LaunchMode = LaunchMode.SingleTop,
+    ConfigurationChanges = ConfigChanges.ScreenSize |
+                           ConfigChanges.Orientation |
+                           ConfigChanges.UiMode |
+                           ConfigChanges.ScreenLayout |
+                           ConfigChanges.SmallestScreenSize |
+                           ConfigChanges.Density)]
+public class MainActivity : MauiAppCompatActivity
 {
     /// <summary>
-    /// 请求通知权限（Android 13+）
+    /// 重写 OnCreate 请求通知权限（Android 13+）
     /// </summary>
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -30,10 +33,10 @@ public class MainActivity : MauiAppActivity
     /// </summary>
     private void RequestNotificationPermission()
     {
-        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
+        if (Build.VERSION.SdkInt >= AndroidVersionCodes.Tiramisu)
         {
-            var permission = Android.Manifest.Permission.PostNotifications;
-            if (CheckSelfPermission(permission) != Android.Content.PM.PackageManager.PermissionGranted)
+            var permission = Manifest.Permission.PostNotifications;
+            if (CheckSelfPermission(permission) != PackageManager.PermissionGranted)
             {
                 RequestPermissions(new[] { permission }, 0);
             }

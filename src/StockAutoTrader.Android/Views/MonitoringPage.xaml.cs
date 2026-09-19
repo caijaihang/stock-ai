@@ -1,21 +1,33 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using CommunityToolkit.Mvvm.ComponentModel;
+using System.Runtime.CompilerServices;
 using StockAutoTrader.Core.Entities;
 
 namespace StockAutoTrader.Android.Views;
 
 /// <summary>
 /// 股票监控页面（Android）
+/// 直接实现 INotifyPropertyChanged，避免 MVVM Toolkit 生成器冲突
 /// </summary>
-[ObservableProperty]
-public partial class MonitoringPage : ContentPage
+public partial class MonitoringPage : ContentPage, INotifyPropertyChanged
 {
+    private bool _isRunning;
+
     /// <summary>
     /// 是否正在运行
     /// </summary>
-    [ObservableProperty]
-    private bool _isRunning;
+    public bool IsRunning
+    {
+        get => _isRunning;
+        set
+        {
+            if (_isRunning != value)
+            {
+                _isRunning = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     /// <summary>
     /// 启动监控命令
@@ -40,13 +52,6 @@ public partial class MonitoringPage : ContentPage
 
         BindingContext = this;
         PositionList.ItemsSource = Positions;
-        PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(IsRunning))
-            {
-                StatusLabel.Text = IsRunning ? "运行中" : "已停止";
-            }
-        };
     }
 
     /// <summary>
@@ -55,6 +60,7 @@ public partial class MonitoringPage : ContentPage
     private void StartMonitoringAsync()
     {
         IsRunning = true;
+        StatusLabel.Text = "运行中";
         // TODO: 调用 ITradingService.StartAsync()
     }
 
@@ -64,6 +70,7 @@ public partial class MonitoringPage : ContentPage
     private void StopMonitoring()
     {
         IsRunning = false;
+        StatusLabel.Text = "已停止";
         // TODO: 调用 ITradingService.StopAsync()
     }
 
@@ -86,5 +93,16 @@ public partial class MonitoringPage : ContentPage
     {
         BalanceLabel.Text = balance.ToString("C");
         MarketValueLabel.Text = marketValue.ToString("C");
+    }
+
+    /// <inheritdoc />
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// 触发属性变更通知
+    /// </summary>
+    private void OnPropertyChanged([CallerFilePath] string propertyName = "")
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
