@@ -1,4 +1,5 @@
 using Serilog;
+using Serilog.Core;
 using StockAutoTrader.Core.Entities;
 using StockAutoTrader.Core.Interfaces;
 using StockAutoTrader.Infrastructure.Data;
@@ -10,7 +11,7 @@ namespace StockAutoTrader.Infrastructure.Logging;
 /// </summary>
 public class SerilogLoggerService : ILoggerService, IDisposable
 {
-    private readonly Serilog.Logger _logger;
+    private readonly Serilog.Core.Logger _logger;
     private readonly TradingDbContext? _context;
 
     /// <summary>
