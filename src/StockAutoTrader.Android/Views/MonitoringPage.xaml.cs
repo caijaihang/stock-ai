@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StockAutoTrader.Core.Entities;
 
@@ -7,7 +8,8 @@ namespace StockAutoTrader.Android.Views;
 /// <summary>
 /// 股票监控页面（Android）
 /// </summary>
-public partial class MonitoringPage : ContentPage, INotifyPropertyChanged
+[ObservableProperty]
+public partial class MonitoringPage : ContentPage
 {
     /// <summary>
     /// 是否正在运行

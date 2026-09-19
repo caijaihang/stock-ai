@@ -1,19 +1,19 @@
-using Android.Content;
+using Android.Content.Res;
 using Android.OS;
-using Android.Runtime;
-using Android.Widget;
-using AndroidX.Core.App;
-using AndroidX.Core.Content;
 
 namespace StockAutoTrader.Android;
 
 /// <summary>
-/// Android 主 Activity
+/// Android 主 Activity（MAUI 标准写法）
 /// </summary>
-[Activity(
+[Android.App.Activity(
     Theme = "@style/MainTheme",
-    ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
-                       ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+    ConfigurationChanges = Android.Content.Res.ConfigChanges.ScreenSize |
+                          Android.Content.Res.ConfigChanges.Orientation |
+                          Android.Content.Res.ConfigChanges.UiMode |
+                          Android.Content.Res.ConfigChanges.ScreenLayout |
+                          Android.Content.Res.ConfigChanges.SmallestScreenSize |
+                          Android.Content.Res.ConfigChanges.Density)]
 public class MainActivity : MauiAppActivity
 {
     /// <summary>
@@ -30,9 +30,9 @@ public class MainActivity : MauiAppActivity
     /// </summary>
     private void RequestNotificationPermission()
     {
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
+        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
         {
-            var permission = Manifest.PermissionName.PostNotifications;
+            var permission = Android.Manifest.Permission.PostNotifications;
             if (CheckSelfPermission(permission) != Android.Content.PM.PackageManager.PermissionGranted)
             {
                 RequestPermissions(new[] { permission }, 0);

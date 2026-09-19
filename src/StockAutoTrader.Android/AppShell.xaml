@@ -4,16 +4,16 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:maui="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:views="clr-namespace:StockAutoTrader.Android.Views">
+    xmlns:views="clr-namespace:StockAutoTrader.Android.Views"
+    FlyoutStyle="Light">
 
     <maui:FlyoutPage.FlyoutContent>
-        <ListView ItemsSource="{Binding MenuItems}">
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <TextCell Text="{Binding Title}" />
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+        <StackLayout Padding="16" Spacing="8">
+            <Label Text="StockAutoTrader" FontSize="Title" FontAttributes="Bold" />
+            <Label Text="股票监控与自动交易" FontSize="Small" TextColor="Gray" />
+            <BoxView HeightRequest="1" Color="Gray" Margin="0,8,0,8" />
+            <Label Text="监控：见主页面" FontSize="Medium" />
+        </StackLayout>
     </maui:FlyoutPage.FlyoutContent>
 
     <maui:FlyoutPage.Content>
