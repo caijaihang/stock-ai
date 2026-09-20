@@ -91,8 +91,8 @@ jobs:
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
         with:
-          api-level: 34
-          target-level: 34
+          cmdline-tools-version: '11076708'
+          accept-android-sdk-licenses: 'true'
 
       - name: Build Android APK
         run: |
