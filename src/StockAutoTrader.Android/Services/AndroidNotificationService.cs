@@ -1,14 +1,12 @@
-using Android.Content;
 using Microsoft.Maui;
-using Microsoft.Maui.ApplicationModel;
 using StockAutoTrader.Core.Interfaces;
 
-namespace StockAutoTrader.Android.Services;
+namespace StockAutoTrader.AndroidApp.Services;
 
 /// <summary>
 /// Android 系统通知服务
-/// 通过 MAUI 平台 API（IPlatformApplication）访问原生 Context，
-/// 避免直接引用 Android.* 命名空间导致与我们命名空间重名冲突。
+/// 通过 IPlatformApplication 获取原生 Android Context，
+/// 使用完全限定名 Android.* 避免与项目命名空间 StockAutoTrader.AndroidApp 冲突。
 /// </summary>
 public class AndroidNotificationService : INotificationService
 {
@@ -42,39 +40,46 @@ public class AndroidNotificationService : INotificationService
                 return;
             }
 
-            // 获取 MAUI 平台服务对象（跨平台安全）
-            var platformApp = Microsoft.Maui.ApplicationModel.PlatformApplication.Current
-                ?? throw new InvalidOperationException("PlatformApplication 未初始化");
-            var androidApp = platformApp.Application as Android.App.Application;
-            if (androidApp == null)
+            // 通过 MAUI 平台 API 获取 Android 原生 Application 对象
+            // Application.Current 在非 Android 平台（如 WPF）返回 null，直接跳过
+            var currentApp = Application.Current;
+            if (currentApp is not MauiApplication)
             {
-                return; // 非 Android 平台直接跳过
+                return;
             }
 
-            var context = androidApp.BaseContext;
-
-            // 创建通知渠道（Android 8.0+）
-            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Oreo)
+            // 获取 Android 原生 Context
+            var platformApp = Microsoft.Maui.ApplicationModel.PlatformApplication;
+            if (!(platformApp?.Context is global::Android.Content.Context context))
             {
-                var channel = new Android.App.NotificationChannel(context, ChannelId, "StockAutoTrader")
+                return;
+            }
+
+            // 创建通知渠道（Android 8.0 / API 26+）
+            if (global::Android.OS.Build.VERSION.SdkInt >= 26)
+            {
+                var channel = new global::Android.App.NotificationChannel(
+                    context,
+                    ChannelId,
+                    "StockAutoTrader")
                 {
-                    Importance = Android.App.NotificationImportance.High
+                    Importance = global::Android.App.NotificationImportance.High
                 };
-                var channelManager = (Android.App.NotificationManager)context
-                    .GetSystemService(Content.NotificationService);
-                channelManager.CreateNotificationChannel(channel);
+                var channelManager = (global::Android.App.NotificationManager?)context
+                    .GetSystemService(global::Android.Content.Context.NotificationService);
+                channelManager?.CreateNotificationChannel(channel);
             }
 
-            var builder = new Android.App.Notification.Builder(context, ChannelId)
-                .SetSmallIcon(Android.Resource.Icon)
+            var builder = new global::Android.App.Notification.Builder(context, ChannelId)
+                .SetSmallIcon(global::Android.Resource.Icon)
                 .SetContentTitle(title)
                 .SetContentText(message)
                 .SetAutoCancel(true)
                 .SetColor(isBuy ? 0xFF2E7D32 : 0xFFC62828);
 
-            var manager = (Android.App.NotificationManager)context
-                .GetSystemService(Content.NotificationService);
-            manager.Notify(_nextId++, builder.Build());
+            var manager = (global::Android.App.NotificationManager?)context
+                .GetSystemService(global::Android.Content.Context.NotificationService);
+            manager?.Notify(_nextId++, builder.Build());
         }
         catch
         {

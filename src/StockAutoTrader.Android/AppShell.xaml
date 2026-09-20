@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <maui:FlyoutPage
-    x:Class="StockAutoTrader.Android.AppShell"
+    x:Class="StockAutoTrader.AndroidApp.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:maui="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:views="clr-namespace:StockAutoTrader.Android.Views"
+    xmlns:views="clr-namespace:StockAutoTrader.AndroidApp.Views"
     FlyoutStyle="Light">
 
     <maui:FlyoutPage.FlyoutContent>

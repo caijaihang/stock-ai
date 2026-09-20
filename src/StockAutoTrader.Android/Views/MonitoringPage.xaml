@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <ContentPage
-    x:Class="StockAutoTrader.Android.Views.MonitoringPage"
+    x:Class="StockAutoTrader.AndroidApp.Views.MonitoringPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="股票监控"

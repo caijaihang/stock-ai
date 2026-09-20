@@ -1,4 +1,4 @@
-namespace StockAutoTrader.Android;
+namespace StockAutoTrader.AndroidApp;
 
 /// <summary>
 /// 应用外壳（侧边栏导航）

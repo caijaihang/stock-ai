@@ -1,8 +1,12 @@
 using Android.App;
+using Android.Content.PM;
+using Android.Content.Res;
+using Android.OS;
 using Android.Runtime;
+using Microsoft.Maui;
 using Microsoft.Maui.Hosting;
 
-namespace StockAutoTrader.Android;
+namespace StockAutoTrader.AndroidApp;
 
 /// <summary>
 /// MAUI Android 应用类（Android 平台 MainApplication）

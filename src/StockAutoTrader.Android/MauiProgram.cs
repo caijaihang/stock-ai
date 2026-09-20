@@ -1,9 +1,9 @@
-using StockAutoTrader.Android.Services;
+using StockAutoTrader.AndroidApp.Services;
 using StockAutoTrader.Core.Interfaces;
 using StockAutoTrader.Core.Strategies;
 using StockAutoTrader.Infrastructure.Providers;
 
-namespace StockAutoTrader.Android;
+namespace StockAutoTrader.AndroidApp;
 
 /// <summary>
 /// MAUI Android 应用 DI 注册

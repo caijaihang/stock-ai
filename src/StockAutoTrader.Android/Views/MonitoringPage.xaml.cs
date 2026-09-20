@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using StockAutoTrader.Core.Entities;
 
-namespace StockAutoTrader.Android.Views;
+namespace StockAutoTrader.AndroidApp.Views;
 
 /// <summary>
 /// 股票监控页面（Android）

@@ -1,10 +1,8 @@
 using Android.App;
 using Android.Content;
-using Android.Content.PM;
-using Android.Content.Res;
 using Android.OS;
 
-namespace StockAutoTrader.Android;
+namespace StockAutoTrader.AndroidApp;
 
 /// <summary>
 /// Android 主 Activity（.NET MAUI 官方模板标准写法）
@@ -31,18 +29,28 @@ public class MainActivity : MauiAppCompatActivity
     }
 
     /// <summary>
-    /// 在运行时请求通知权限
+    /// 在运行时请求通知权限（Android 13 / API 33+）
     /// </summary>
     private void RequestNotificationPermission()
     {
-        if (Build.VERSION.SdkInt >= AndroidVersionCodes.Tiramisu)
+        // Android 13 (API 33) 起需要运行时请求通知权限
+        if (Build.VERSION.SdkInt < 33)
         {
-            var permission = Manifest.Permission.PostNotifications;
-            if (CheckSelfPermission(permission) == PackageManager.PermissionGranted)
-            {
-                return;
-            }
-            RequestPermissions(new[] { permission }, 0);
+            return;
         }
+
+        // 权限字符串 "android.permission.POST_NOTIFICATIONS"
+        const string postNotificationsPermission = "android.permission.POST_NOTIFICATIONS";
+
+        // 使用 PackageManager.PermissionGranted 常量（值为 0）
+        if (CheckSelfPermission(postNotificationsPermission) ==
+            Android.Content.PM.PackageManager.PermissionGranted)
+        {
+            return;
+        }
+
+        // RequestPermissions 参数类型为 string[]，避免 string?[] 转换错误
+        var permissions = new[] { postNotificationsPermission };
+        RequestPermissions(permissions, 1);
     }
 }

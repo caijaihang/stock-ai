@@ -1,6 +1,6 @@
 using StockAutoTrader.Core.Interfaces;
 
-namespace StockAutoTrader.Android.Services;
+namespace StockAutoTrader.AndroidApp.Services;
 
 /// <summary>
 /// 无操作日志服务（Android 端占位实现，后续可接 Serilog Android 落盘）
