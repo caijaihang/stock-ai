@@ -5,8 +5,6 @@ on:
     branches: [ main, master ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -52,23 +50,14 @@ jobs:
           Compress-Archive -Path "./dist/StockAutoTrader-windows-x64/*" -DestinationPath "StockAutoTrader-windows-x64.zip" -Force
           Write-Host "Built artifact for ref: ${{ github.ref_name }}"
 
-      # 每次构建都上传 artifact，可在 Actions 页面直接下载
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: StockAutoTrader-windows-x64
-          path: StockAutoTrader-windows-x64.zip
-          retention-days: 30
-
-      # 只在 tag 推送时创建 GitHub Release
-      - name: Create GitHub Release (tag only)
-        if: startsWith(github.ref, 'refs/tags/')
+      # 每次 push 到 main 都直接发布到 Release（固定 tag latest，滚动更新）
+      - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             StockAutoTrader-windows-x64.zip
-          tag_name: ${{ github.ref_name }}
-          name: "StockAutoTrader ${{ github.ref_name }}"
+          tag_name: latest
+          name: "StockAutoTrader 最新构建"
           generate_release_notes: false
           draft: false
           body: |
@@ -78,5 +67,7 @@ jobs:
             - 格式：单文件 self-contained exe
             - 行情：支持通达信 .day 文件 / CSV 导出、同花顺 CSV 导出
             - 交易：支持 Simulated（模拟撮合）/ Real（文件桥接真实交易）
+            - 构建提交：${{ github.sha }}
+            - 构建时间：${{ github.event.head_commit.timestamp }}
 
             解压后直接运行 `StockAutoTrader.App.exe`。
