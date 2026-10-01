@@ -96,7 +96,7 @@ public class TradingService : ITradingService
     {
         if (_cts != null)
         {
-            await _cts.CancelAsync();
+            _cts.Cancel();
             _cts.Dispose();
             _cts = null;
         }
