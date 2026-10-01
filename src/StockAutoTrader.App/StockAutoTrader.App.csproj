@@ -10,7 +10,19 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <StartupObject>StockAutoTrader.App.App</StartupObject>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Win7 4GB 内存适配：关闭 Server GC（省内存）、启用并发 GC、裁剪未用程序集 -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <PublishTrimmed>false</PublishTrimmed>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
+
+  <!-- 运行时 GC 配置（限制堆大小，适配 3GB 可用内存） -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.HeapHardLimitPercent" Value="60" />
+    <RuntimeHostConfigurationOption Include="System.GC.HighMemoryPercent" Value="85" />
+    <RuntimeHostConfigurationOption Include="System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization" Value="false" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />

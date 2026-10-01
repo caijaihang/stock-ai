@@ -15,11 +15,13 @@ public class WindowsNotificationService : INotificationService
 {
     private readonly Dispatcher _dispatcher;
     private readonly ServiceSettings _settings;
+    private readonly WebhookNotifier _webhookNotifier;
 
-    public WindowsNotificationService(ServiceSettings settings)
+    public WindowsNotificationService(ServiceSettings settings, WebhookNotifier webhookNotifier)
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
         _settings = settings;
+        _webhookNotifier = webhookNotifier;
     }
 
     public bool SoundEnabled
@@ -58,6 +60,12 @@ public class WindowsNotificationService : INotificationService
         if (SystemToastEnabled)
         {
             // 系统 Toast 预留（Windows.UI.Notifications）
+        }
+
+        // Webhook 推送（飞书/钉钉等），异步不阻塞
+        if (!string.IsNullOrWhiteSpace(_settings.WebhookUrl))
+        {
+            _ = _webhookNotifier.SendAsync(title, message);
         }
     }
 

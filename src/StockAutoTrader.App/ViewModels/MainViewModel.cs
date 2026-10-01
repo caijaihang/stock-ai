@@ -28,6 +28,9 @@ public partial class MainViewModel : ObservableObject
     private readonly IMarketDataProvider _marketDataProvider;
     private readonly ILoggerService _logger;
     private readonly ServiceSettings _settings;
+    private readonly AiStockSelector _aiStockSelector;
+    private readonly TradingDiaryService _diaryService;
+    private readonly StrategySquareService _strategyService;
     private readonly DispatcherTimer _uiTimer;
 
     [ObservableProperty] private Account _account = new();
@@ -44,6 +47,25 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private Order? _selectedOrder;
     [ObservableProperty] private Position? _selectedPosition;
     [ObservableProperty] private ISeries[] _priceChartSeries = Array.Empty<ISeries>();
+
+    // AI 选股
+    [ObservableProperty] private string _aiCondition = string.Empty;
+    [ObservableProperty] private string _aiMarket = "all";
+    [ObservableProperty] private int _aiMaxCount = 50;
+    [ObservableProperty] private ObservableCollection<StockRow> _aiResults = new();
+    [ObservableProperty] private StockRow? _selectedAiResult;
+
+    // 交易日记
+    [ObservableProperty] private string _diaryTitle = string.Empty;
+    [ObservableProperty] private string _diaryContent = string.Empty;
+    [ObservableProperty] private string _diaryType = "note";
+    [ObservableProperty] private string _diaryStockCode = string.Empty;
+    [ObservableProperty] private ObservableCollection<TradingDiaryEntry> _diaryEntries = new();
+    [ObservableProperty] private TradingDiaryEntry? _selectedDiaryEntry;
+
+    // 策略广场
+    [ObservableProperty] private ObservableCollection<StrategyDefinition> _strategies = new();
+    [ObservableProperty] private StrategyDefinition? _selectedStrategy;
 
     // 添加股票输入
     [ObservableProperty] private string _newStockCode = string.Empty;
@@ -76,6 +98,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _settingsTongHuaShunExePath = string.Empty;
     [ObservableProperty] private string _settingsAiStockApiUrl = string.Empty;
     [ObservableProperty] private string _settingsAiStockApiKey = string.Empty;
+    [ObservableProperty] private string _settingsWebSocketServerUrl = string.Empty;
+    [ObservableProperty] private string _settingsWebSocketApiKey = string.Empty;
+    [ObservableProperty] private string _settingsWebhookUrl = string.Empty;
+    [ObservableProperty] private string _settingsWebhookType = "feishu";
 
     public Array MarketTypes => Enum.GetValues(typeof(MarketType));
     public Array BenchmarkTypes => Enum.GetValues(typeof(BenchmarkPriceType));
@@ -89,8 +115,13 @@ public partial class MainViewModel : ObservableObject
         _marketDataProvider = App.ServiceProvider.GetRequiredService<IMarketDataProvider>();
         _logger = App.ServiceProvider.GetRequiredService<ILoggerService>();
         _settings = App.ServiceProvider.GetRequiredService<ServiceSettings>();
+        _aiStockSelector = App.ServiceProvider.GetRequiredService<AiStockSelector>();
+        _diaryService = App.ServiceProvider.GetRequiredService<TradingDiaryService>();
+        _strategyService = App.ServiceProvider.GetRequiredService<StrategySquareService>();
 
         LoadSettingsToUi();
+        LoadDiary();
+        LoadStrategies();
 
         _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _uiTimer.Tick += async (_, _) => await RefreshUiAsync();
@@ -113,6 +144,10 @@ public partial class MainViewModel : ObservableObject
         SettingsTongHuaShunExePath = _settings.TongHuaShunExePath;
         SettingsAiStockApiUrl = _settings.AiStockApiUrl;
         SettingsAiStockApiKey = _settings.AiStockApiKey;
+        SettingsWebSocketServerUrl = _settings.WebSocketServerUrl;
+        SettingsWebSocketApiKey = _settings.WebSocketApiKey;
+        SettingsWebhookUrl = _settings.WebhookUrl;
+        SettingsWebhookType = _settings.WebhookType;
         RefreshIntervalSeconds = _settings.RefreshIntervalMs / 1000;
     }
 
@@ -242,6 +277,319 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 从通达信自选股板块导入股票
+    /// </summary>
+    [RelayCommand]
+    private async Task ImportWatchlistAsync()
+    {
+        try
+        {
+            var tdxDir = _settings.TdxInstallDirectory;
+            if (string.IsNullOrWhiteSpace(tdxDir))
+            {
+                MessageBox.Show("请先在设置页配置通达信安装目录");
+                return;
+            }
+
+            var codes = StockAutoTrader.Infrastructure.Providers.TdxBlockNewReader.ReadBlock(tdxDir);
+            if (codes.Count == 0)
+            {
+                MessageBox.Show("未读取到自选股，请确认通达信目录下 T0002/blocknew/ 存在自选股文件");
+                return;
+            }
+
+            var imported = 0;
+            foreach (var code in codes)
+            {
+                var existing = await _stockRepository.GetConfigAsync(code);
+                if (existing != null) continue; // 已存在则跳过
+
+                var market = code.StartsWith("6") ? MarketType.Shanghai : MarketType.Shenzhen;
+                var cfg = new StockConfig
+                {
+                    StockCode = code,
+                    StockName = code,
+                    Market = market,
+                    BenchmarkPriceType = BenchmarkPriceType.PreviousClose,
+                    BuyThresholdPercent = 2.0m,
+                    SellThresholdPercent = 2.0m,
+                    BuyQuantity = 100,
+                    SellQuantity = 100,
+                    CooldownSeconds = 60,
+                    MaxBuyTimesPerDay = 1,
+                    MaxSellTimesPerDay = 1,
+                    Status = StockStatus.Stopped,
+                    TradingHours = "09:30-11:30,13:00-15:00"
+                };
+                await _stockRepository.SaveConfigAsync(cfg);
+                imported++;
+            }
+
+            MessageBox.Show($"成功导入 {imported} 只自选股（跳过已存在的 {codes.Count - imported} 只）");
+            _logger.Info($"从通达信导入自选股 {imported} 只", "UI");
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"导入失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 运行 AI 选股
+    /// </summary>
+    [RelayCommand]
+    private async Task RunAiSelectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AiCondition))
+        {
+            MessageBox.Show("请输入选股条件");
+            return;
+        }
+
+        StatusText = "AI 选股中...";
+        try
+        {
+            var results = await _aiStockSelector.SelectAsync(AiCondition, AiMarket, AiMaxCount);
+            AiResults.Clear();
+            if (results.Count == 0)
+            {
+                MessageBox.Show("未找到符合条件的股票，或 AI 接口未配置/不可用");
+            }
+            else
+            {
+                // 补充行情数据
+                var snapshots = await _marketDataProvider.GetSnapshotsAsync(results.Select(r => r.StockCode).ToList());
+                var snapMap = snapshots.ToDictionary(s => s.StockCode);
+
+                foreach (var r in results)
+                {
+                    var row = new StockRow { Config = new StockConfig { StockCode = r.StockCode, StockName = r.StockName } };
+                    if (snapMap.TryGetValue(r.StockCode, out var snap))
+                    {
+                        row.CurrentPrice = snap.CurrentPrice;
+                        row.ChangePercent = snap.ChangePercent;
+                    }
+                    AiResults.Add(row);
+                }
+            }
+            _logger.Info($"AI 选股完成，返回 {results.Count} 只", "AI");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"AI 选股失败：{ex.Message}");
+        }
+        finally
+        {
+            StatusText = IsRunning ? "运行中" : "已停止";
+        }
+    }
+
+    /// <summary>
+    /// 将 AI 选股结果全部添加到监控列表
+    /// </summary>
+    [RelayCommand]
+    private async Task AddAiResultsToWatchAsync()
+    {
+        if (AiResults.Count == 0)
+        {
+            MessageBox.Show("没有可添加的选股结果");
+            return;
+        }
+
+        var added = 0;
+        foreach (var row in AiResults)
+        {
+            var code = row.Config.StockCode;
+            var existing = await _stockRepository.GetConfigAsync(code);
+            if (existing != null) continue;
+
+            var market = code.StartsWith("6") ? MarketType.Shanghai : MarketType.Shenzhen;
+            var cfg = new StockConfig
+            {
+                StockCode = code,
+                StockName = row.Config.StockName,
+                Market = market,
+                BenchmarkPriceType = BenchmarkPriceType.PreviousClose,
+                BuyThresholdPercent = 2.0m,
+                SellThresholdPercent = 2.0m,
+                BuyQuantity = 100,
+                SellQuantity = 100,
+                CooldownSeconds = 60,
+                MaxBuyTimesPerDay = 1,
+                MaxSellTimesPerDay = 1,
+                Status = StockStatus.Stopped,
+                TradingHours = "09:30-11:30,13:00-15:00"
+            };
+            await _stockRepository.SaveConfigAsync(cfg);
+            added++;
+        }
+
+        MessageBox.Show($"已添加 {added} 只股票到监控列表");
+        _logger.Info($"从 AI 选股结果添加 {added} 只股票到监控", "AI");
+        await LoadDataAsync();
+    }
+
+    /// <summary>
+    /// 加载交易日记
+    /// </summary>
+    private void LoadDiary()
+    {
+        DiaryEntries.Clear();
+        foreach (var entry in _diaryService.GetAll())
+            DiaryEntries.Add(entry);
+    }
+
+    /// <summary>
+    /// 添加日记条目
+    /// </summary>
+    [RelayCommand]
+    private void AddDiary()
+    {
+        if (string.IsNullOrWhiteSpace(DiaryTitle) && string.IsNullOrWhiteSpace(DiaryContent))
+        {
+            MessageBox.Show("请输入标题或内容");
+            return;
+        }
+
+        var entry = _diaryService.Add(DiaryTitle, DiaryContent, DiaryType, DiaryStockCode);
+        DiaryEntries.Insert(0, entry);
+        DiaryTitle = string.Empty;
+        DiaryContent = string.Empty;
+        DiaryStockCode = string.Empty;
+        _logger.Info($"添加日记：{entry.Title}", "Diary");
+    }
+
+    /// <summary>
+    /// 加载策略列表
+    /// </summary>
+    private void LoadStrategies()
+    {
+        Strategies.Clear();
+        foreach (var s in _strategyService.GetAll())
+            Strategies.Add(s);
+    }
+
+    /// <summary>
+    /// 新建策略
+    /// </summary>
+    [RelayCommand]
+    private void NewStrategy()
+    {
+        var name = Microsoft.VisualBasic.Interaction.InputBox("请输入策略名称", "新建策略", "新策略");
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        var formula = Microsoft.VisualBasic.Interaction.InputBox("请输入选股公式（如 CROSS(MA(C,5),MA(C,10))）", "新建策略", "");
+        var desc = Microsoft.VisualBasic.Interaction.InputBox("请输入策略描述", "新建策略", "");
+
+        var strategy = new StrategyDefinition
+        {
+            Name = name,
+            Formula = formula,
+            Description = desc,
+            Author = "用户",
+            BuyThresholdPercent = 2.0m,
+            SellThresholdPercent = 2.0m,
+            BuyQuantity = 100,
+            SellQuantity = 100,
+            CooldownSeconds = 60
+        };
+        _strategyService.Save(strategy);
+        LoadStrategies();
+        _logger.Info($"新建策略：{name}", "Strategy");
+    }
+
+    /// <summary>
+    /// 导出策略到剪贴板
+    /// </summary>
+    [RelayCommand]
+    private void ExportStrategy()
+    {
+        if (SelectedStrategy == null)
+        {
+            MessageBox.Show("请先选择要导出的策略");
+            return;
+        }
+        var json = _strategyService.Export(SelectedStrategy.Id);
+        Clipboard.SetText(json);
+        MessageBox.Show("策略 JSON 已复制到剪贴板");
+    }
+
+    /// <summary>
+    /// 从剪贴板导入策略
+    /// </summary>
+    [RelayCommand]
+    private void ImportStrategy()
+    {
+        var json = Clipboard.GetText();
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            MessageBox.Show("剪贴板为空，请先复制策略 JSON");
+            return;
+        }
+        var s = _strategyService.Import(json);
+        if (s != null)
+        {
+            LoadStrategies();
+            MessageBox.Show($"已导入策略：{s.Name}");
+        }
+        else
+        {
+            MessageBox.Show("导入失败，JSON 格式不正确");
+        }
+    }
+
+    /// <summary>
+    /// 将策略参数应用到当前选中的监控股票
+    /// </summary>
+    [RelayCommand]
+    private async Task ApplyStrategyAsync()
+    {
+        if (SelectedStrategy == null)
+        {
+            MessageBox.Show("请先选择策略");
+            return;
+        }
+        if (SelectedStock == null)
+        {
+            MessageBox.Show("请先在股票监控页选择一只股票");
+            return;
+        }
+
+        var cfg = SelectedStock.Config;
+        cfg.BuyThresholdPercent = SelectedStrategy.BuyThresholdPercent;
+        cfg.SellThresholdPercent = SelectedStrategy.SellThresholdPercent;
+        cfg.BuyQuantity = SelectedStrategy.BuyQuantity;
+        cfg.SellQuantity = SelectedStrategy.SellQuantity;
+        cfg.CooldownSeconds = SelectedStrategy.CooldownSeconds;
+        await _stockRepository.SaveConfigAsync(cfg);
+
+        SelectedStrategy.UseCount++;
+        _strategyService.Save(SelectedStrategy);
+        LoadStrategies();
+        await LoadDataAsync();
+        MessageBox.Show($"已将策略「{SelectedStrategy.Name}」应用到 {cfg.StockCode}");
+    }
+
+    /// <summary>
+    /// 删除策略
+    /// </summary>
+    [RelayCommand]
+    private void DeleteStrategy()
+    {
+        if (SelectedStrategy == null)
+        {
+            MessageBox.Show("请先选择要删除的策略");
+            return;
+        }
+        if (MessageBox.Show($"确定删除策略「{SelectedStrategy.Name}」？", "确认", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
+            return;
+
+        _strategyService.Delete(SelectedStrategy.Id);
+        LoadStrategies();
+    }
+
     [RelayCommand]
     private void ChangeRefreshInterval()
     {
@@ -279,6 +627,10 @@ public partial class MainViewModel : ObservableObject
         _settings.TongHuaShunExePath = SettingsTongHuaShunExePath;
         _settings.AiStockApiUrl = SettingsAiStockApiUrl;
         _settings.AiStockApiKey = SettingsAiStockApiKey;
+        _settings.WebSocketServerUrl = SettingsWebSocketServerUrl;
+        _settings.WebSocketApiKey = SettingsWebSocketApiKey;
+        _settings.WebhookUrl = SettingsWebhookUrl;
+        _settings.WebhookType = SettingsWebhookType;
         _settings.RefreshIntervalMs = RefreshIntervalSeconds * 1000;
 
         var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });

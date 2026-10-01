@@ -15,6 +15,15 @@ public class AiStockSelector
     private readonly ServiceSettings _settings;
     private readonly HttpClient _httpClient;
 
+    /// <summary>
+    /// AI 选股结果项
+    /// </summary>
+    public class StockResult
+    {
+        public string StockCode { get; set; } = string.Empty;
+        public string StockName { get; set; } = string.Empty;
+    }
+
     public AiStockSelector(ServiceSettings settings)
     {
         _settings = settings;
@@ -27,11 +36,9 @@ public class AiStockSelector
     /// <param name="condition">选股条件（自然语言描述，如"市盈率小于20且净利润增长大于30%"）</param>
     /// <param name="market">市场筛选：all / sh / sz / cyb（创业板）/ kcb（科创板）</param>
     /// <param name="maxCount">返回最大数量</param>
-    /// <returns>匹配的股票代码列表</returns>
-    public async Task<List<string>> SelectAsync(string condition, string market = "all", int maxCount = 50)
+    /// <returns>匹配的股票列表（含代码和名称）</returns>
+    public async Task<List<StockResult>> SelectAsync(string condition, string market = "all", int maxCount = 50)
     {
-        var result = new List<string>();
-
         // 1. 如果配置了 AI 选股 API，优先调用远程接口
         if (!string.IsNullOrWhiteSpace(_settings.AiStockApiUrl))
         {
@@ -53,7 +60,7 @@ public class AiStockSelector
     /// <summary>
     /// 调用远程 AI 选股 API
     /// </summary>
-    private async Task<List<string>> CallRemoteApiAsync(string condition, string market, int maxCount)
+    private async Task<List<StockResult>> CallRemoteApiAsync(string condition, string market, int maxCount)
     {
         var payload = new
         {
@@ -80,9 +87,9 @@ public class AiStockSelector
     /// <summary>
     /// 解析 API 返回的 JSON（支持多种格式）
     /// </summary>
-    private static List<string> ParseApiResponse(string json)
+    private static List<StockResult> ParseApiResponse(string json)
     {
-        var codes = new List<string>();
+        var results = new List<StockResult>();
         try
         {
             using var doc = JsonDocument.Parse(json);
@@ -94,9 +101,9 @@ public class AiStockSelector
                 foreach (var c in codesEl.EnumerateArray())
                 {
                     var code = c.GetString();
-                    if (!string.IsNullOrWhiteSpace(code)) codes.Add(NormalizeCode(code));
+                    if (!string.IsNullOrWhiteSpace(code)) results.Add(new StockResult { StockCode = NormalizeCode(code) });
                 }
-                return codes;
+                return results;
             }
 
             // 尝试顶层 codes 数组
@@ -105,12 +112,12 @@ public class AiStockSelector
                 foreach (var c in codesEl2.EnumerateArray())
                 {
                     var code = c.GetString();
-                    if (!string.IsNullOrWhiteSpace(code)) codes.Add(NormalizeCode(code));
+                    if (!string.IsNullOrWhiteSpace(code)) results.Add(new StockResult { StockCode = NormalizeCode(code) });
                 }
-                return codes;
+                return results;
             }
 
-            // 尝试 stocks 数组，每项含 code 字段
+            // 尝试 stocks 数组，每项含 code 和 name 字段
             if (root.TryGetProperty("stocks", out var stocks))
             {
                 foreach (var s in stocks.EnumerateArray())
@@ -118,7 +125,12 @@ public class AiStockSelector
                     if (s.TryGetProperty("code", out var codeEl))
                     {
                         var code = codeEl.GetString();
-                        if (!string.IsNullOrWhiteSpace(code)) codes.Add(NormalizeCode(code));
+                        if (!string.IsNullOrWhiteSpace(code))
+                        {
+                            var name = string.Empty;
+                            if (s.TryGetProperty("name", out var nameEl)) name = nameEl.GetString() ?? string.Empty;
+                            results.Add(new StockResult { StockCode = NormalizeCode(code), StockName = name });
+                        }
                     }
                 }
             }
@@ -127,42 +139,42 @@ public class AiStockSelector
         {
             // 解析失败返回空
         }
-        return codes;
+        return results;
     }
 
     /// <summary>
     /// 本地规则匹配：解析条件中的关键词，返回一些示例股票代码
     /// 注意：这是兜底逻辑，实际选股应通过 API 或通达信公式
     /// </summary>
-    private static List<string> MatchByLocalRules(string condition, string market, int maxCount)
+    private static List<StockResult> MatchByLocalRules(string condition, string market, int maxCount)
     {
         // 兜底：返回一组示例蓝筹股代码（实际使用时应通过 API 获取真实结果）
-        var pool = new List<string>
+        var pool = new List<StockResult>
         {
-            "600519", // 贵州茅台
-            "000858", // 五粮液
-            "601318", // 中国平安
-            "000001", // 平安银行
-            "600036", // 招商银行
-            "000333", // 美的集团
-            "600276", // 恒瑞医药
-            "002594", // 比亚迪
-            "601012", // 隆基绿能
-            "300750", // 宁德时代
-            "600030", // 中信证券
-            "601899", // 紫金矿业
-            "002475", // 立讯精密
-            "600887", // 伊利股份
-            "601166", // 兴业银行
+            new() { StockCode = "600519", StockName = "贵州茅台" },
+            new() { StockCode = "000858", StockName = "五粮液" },
+            new() { StockCode = "601318", StockName = "中国平安" },
+            new() { StockCode = "000001", StockName = "平安银行" },
+            new() { StockCode = "600036", StockName = "招商银行" },
+            new() { StockCode = "000333", StockName = "美的集团" },
+            new() { StockCode = "600276", StockName = "恒瑞医药" },
+            new() { StockCode = "002594", StockName = "比亚迪" },
+            new() { StockCode = "601012", StockName = "隆基绿能" },
+            new() { StockCode = "300750", StockName = "宁德时代" },
+            new() { StockCode = "600030", StockName = "中信证券" },
+            new() { StockCode = "601899", StockName = "紫金矿业" },
+            new() { StockCode = "002475", StockName = "立讯精密" },
+            new() { StockCode = "600887", StockName = "伊利股份" },
+            new() { StockCode = "601166", StockName = "兴业银行" },
         };
 
         // 根据市场过滤
         var filtered = market switch
         {
-            "sh" => pool.Where(c => c.StartsWith("6")).ToList(),
-            "sz" => pool.Where(c => c.StartsWith("0") || c.StartsWith("3")).ToList(),
-            "cyb" => pool.Where(c => c.StartsWith("3")).ToList(),
-            "kcb" => pool.Where(c => c.StartsWith("688")).ToList(),
+            "sh" => pool.Where(c => c.StockCode.StartsWith("6")).ToList(),
+            "sz" => pool.Where(c => c.StockCode.StartsWith("0") || c.StockCode.StartsWith("3")).ToList(),
+            "cyb" => pool.Where(c => c.StockCode.StartsWith("3")).ToList(),
+            "kcb" => pool.Where(c => c.StockCode.StartsWith("688")).ToList(),
             _ => pool
         };
 

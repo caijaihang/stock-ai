@@ -125,6 +125,7 @@
                             <Button Content="编辑" Command="{Binding EditStockCommand}" Width="70" Height="26" Margin="3"/>
                             <Button Content="删除" Command="{Binding DeleteStockCommand}" Width="70" Height="26" Margin="3" Background="#FF757575" Foreground="White" BorderThickness="0"/>
                             <Button Content="启停" Command="{Binding ToggleStockCommand}" Width="70" Height="26" Margin="3"/>
+                            <Button Content="导入自选股" Command="{Binding ImportWatchlistCommand}" Width="90" Height="26" Margin="3" Background="#FF9C27B0" Foreground="White" BorderThickness="0"/>
                         </WrapPanel>
                     </Border>
                     <DataGrid Grid.Row="1" ItemsSource="{Binding Stocks}" SelectedItem="{Binding SelectedStock}"
@@ -307,6 +308,7 @@
                                     <ComboBoxItem Content="Simulated"/>
                                     <ComboBoxItem Content="TongDaXin"/>
                                     <ComboBoxItem Content="TongHuaShun"/>
+                                    <ComboBoxItem Content="WebSocket"/>
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Margin="0,0,20,10">
@@ -337,6 +339,22 @@
                             <CheckBox Content="系统Toast" IsChecked="{Binding SettingsSystemToastNotification}" Margin="0,5"/>
                         </UniformGrid>
 
+                        <TextBlock Text="Webhook 通知（飞书/钉钉）" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,20">
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="Webhook URL（留空不启用）" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsWebhookUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="类型" Margin="0,0,0,3"/>
+                                <ComboBox Height="28" SelectedItem="{Binding SettingsWebhookType}">
+                                    <ComboBoxItem Content="feishu"/>
+                                    <ComboBoxItem Content="dingtalk"/>
+                                    <ComboBoxItem Content="generic"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </UniformGrid>
+
                         <TextBlock Text="外部程序路径" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
                         <UniformGrid Columns="2" Margin="0,0,0,20">
                             <StackPanel Margin="0,0,20,10">
@@ -361,6 +379,18 @@
                             </StackPanel>
                         </UniformGrid>
 
+                        <TextBlock Text="WebSocket 行情" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,20">
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="服务器地址 (ws://)" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsWebSocketServerUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="API Key（可选）" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsWebSocketApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </UniformGrid>
+
                         <StackPanel Orientation="Horizontal">
                             <Button Content="保存设置" Command="{Binding SaveSettingsCommand}" Width="120" Height="32" Margin="5" Background="#FF4CAF50" Foreground="White" BorderThickness="0"/>
                             <Button Content="恢复默认" Command="{Binding ResetSettingsCommand}" Width="120" Height="32" Margin="5"/>
@@ -369,6 +399,120 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
+            </TabItem>
+
+            <!-- AI 选股 -->
+            <TabItem Header="AI 选股">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="White" Padding="10" Margin="0,0,0,8" CornerRadius="4" BorderBrush="#FFDDDDDD" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="输入选股条件（自然语言或公式，如：市盈率小于20且净利润增长大于30%）" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding AiCondition}" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="市场:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <ComboBox Width="100" Height="28" SelectedItem="{Binding AiMarket}">
+                                    <ComboBoxItem Content="all"/>
+                                    <ComboBoxItem Content="sh"/>
+                                    <ComboBoxItem Content="sz"/>
+                                    <ComboBoxItem Content="cyb"/>
+                                    <ComboBoxItem Content="kcb"/>
+                                </ComboBox>
+                                <TextBlock Text="  数量:" VerticalAlignment="Center" Margin="15,0,8,0"/>
+                                <TextBox Text="{Binding AiMaxCount}" Width="60" Height="28"/>
+                                <Button Content="开始选股" Command="{Binding RunAiSelectionCommand}" Width="100" Height="28" Margin="15,0,0,0" Background="#FF4CAF50" Foreground="White" BorderThickness="0"/>
+                                <Button Content="添加全部到监控" Command="{Binding AddAiResultsToWatchCommand}" Width="120" Height="28" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding AiResults}" SelectedItem="{Binding SelectedAiResult}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="100"/>
+                            <DataGridTextColumn Header="名称" Binding="{Binding StockName}" Width="150"/>
+                            <DataGridTextColumn Header="现价" Binding="{Binding CurrentPrice, StringFormat=F2}" Width="100"/>
+                            <DataGridTextColumn Header="涨跌幅%" Binding="{Binding ChangePercent, StringFormat={}{0:F2}}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 交易日记 -->
+            <TabItem Header="交易日记">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="White" Padding="10" Margin="0,0,0,8" CornerRadius="4" BorderBrush="#FFDDDDDD" BorderThickness="1">
+                        <StackPanel>
+                            <UniformGrid Columns="4" Margin="0,0,0,8">
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="标题" Margin="0,0,0,3"/>
+                                    <TextBox Height="28" Text="{Binding DiaryTitle}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="类型" Margin="0,0,0,3"/>
+                                    <ComboBox Height="28" SelectedItem="{Binding DiaryType}">
+                                        <ComboBoxItem Content="note"/>
+                                        <ComboBoxItem Content="trade"/>
+                                        <ComboBoxItem Content="changelog"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="关联股票代码" Margin="0,0,0,3"/>
+                                    <TextBox Height="28" Text="{Binding DiaryStockCode}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,0" VerticalAlignment="Bottom">
+                                    <Button Content="添加日记" Command="{Binding AddDiaryCommand}" Height="28" Background="#FF4CAF50" Foreground="White" BorderThickness="0"/>
+                                </StackPanel>
+                            </UniformGrid>
+                            <TextBox Text="{Binding DiaryContent}" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                        </StackPanel>
+                    </Border>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding DiaryEntries}" SelectedItem="{Binding SelectedDiaryEntry}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="日期" Binding="{Binding Date, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
+                            <DataGridTextColumn Header="类型" Binding="{Binding Type}" Width="80"/>
+                            <DataGridTextColumn Header="标题" Binding="{Binding Title}" Width="150"/>
+                            <DataGridTextColumn Header="内容" Binding="{Binding Content}" Width="*"/>
+                            <DataGridTextColumn Header="股票" Binding="{Binding StockCode}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 策略广场 -->
+            <TabItem Header="策略广场">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="White" Padding="10" Margin="0,0,0,8" CornerRadius="4" BorderBrush="#FFDDDDDD" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="新建策略" Command="{Binding NewStrategyCommand}" Width="100" Height="28" Margin="0,0,8,0" Background="#FF2196F3" Foreground="White" BorderThickness="0"/>
+                            <Button Content="导出选中" Command="{Binding ExportStrategyCommand}" Width="100" Height="28" Margin="0,0,8,0"/>
+                            <Button Content="导入策略" Command="{Binding ImportStrategyCommand}" Width="100" Height="28" Margin="0,0,8,0"/>
+                            <Button Content="应用到监控" Command="{Binding ApplyStrategyCommand}" Width="120" Height="28" Margin="0,0,8,0" Background="#FF4CAF50" Foreground="White" BorderThickness="0"/>
+                            <Button Content="删除" Command="{Binding DeleteStrategyCommand}" Width="80" Height="28" Background="#FF757575" Foreground="White" BorderThickness="0"/>
+                        </StackPanel>
+                    </Border>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding Strategies}" SelectedItem="{Binding SelectedStrategy}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="120"/>
+                            <DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="200"/>
+                            <DataGridTextColumn Header="公式" Binding="{Binding Formula}" Width="200"/>
+                            <DataGridTextColumn Header="买阈值%" Binding="{Binding BuyThresholdPercent}" Width="70"/>
+                            <DataGridTextColumn Header="卖阈值%" Binding="{Binding SellThresholdPercent}" Width="70"/>
+                            <DataGridTextColumn Header="作者" Binding="{Binding Author}" Width="80"/>
+                            <DataGridTextColumn Header="评分" Binding="{Binding Rating}" Width="60"/>
+                            <DataGridTextColumn Header="使用次数" Binding="{Binding UseCount}" Width="70"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
             </TabItem>
         </TabControl>
     </Grid>

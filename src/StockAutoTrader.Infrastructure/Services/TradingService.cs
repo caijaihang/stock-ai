@@ -34,6 +34,7 @@ public class TradingService : ITradingService
     private readonly SemaphoreSlim _tradeLock = new(1, 1);
     private volatile bool _isPaused;
     private readonly ConcurrentDictionary<string, int> _failCount = new();
+    private readonly ConcurrentDictionary<string, int> _dataMissCount = new();
     private const int MaxFailCount = 5;
 
     public bool IsRunning => _monitorTask != null && !_monitorTask.IsCompleted;
@@ -238,8 +239,41 @@ public class TradingService : ITradingService
 
         if (runningCodes.Count == 0) return;
 
-        var snapshots = await _marketDataProvider.GetSnapshotsAsync(runningCodes, cancellationToken);
-        if (snapshots.Count == 0) return;
+        // 数据缺失重试：最多重试 2 次，每次间隔 500ms
+        IReadOnlyList<MarketDataSnapshot> snapshots = Array.Empty<MarketDataSnapshot>();
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            snapshots = await _marketDataProvider.GetSnapshotsAsync(runningCodes, cancellationToken);
+            if (snapshots.Count > 0) break;
+            if (attempt < 2) await Task.Delay(500, cancellationToken);
+        }
+
+        if (snapshots.Count == 0)
+        {
+            // 连续 3 次都获取不到行情，告警
+            _logger.Warning("行情数据全部缺失，已重试 3 次仍无数据", "MarketData");
+            _notificationService.Notify("行情数据缺失", "连续 3 次获取行情失败，请检查行情源连接", isBuy: false);
+            return;
+        }
+
+        // 检测单只股票数据缺失并告警（连续 5 次无数据）
+        var snapCodes = new HashSet<string>(snapshots.Select(s => s.StockCode));
+        foreach (var code in runningCodes)
+        {
+            if (!snapCodes.Contains(code))
+            {
+                var missCount = _dataMissCount.AddOrUpdate(code, 1, (_, c) => c + 1);
+                if (missCount == 5)
+                {
+                    _logger.Warning($"股票 {code} 连续 5 次无行情数据", "MarketData", code);
+                    _notificationService.Notify("个股数据缺失", $"股票 {code} 连续 5 次无行情，请检查数据", isBuy: false);
+                }
+            }
+            else
+            {
+                _dataMissCount.TryRemove(code, out _);
+            }
+        }
 
         var priceMap = snapshots.ToDictionary(s => s.StockCode, s => s.CurrentPrice);
         await _positionManager.UpdatePricesAsync(priceMap, cancellationToken);

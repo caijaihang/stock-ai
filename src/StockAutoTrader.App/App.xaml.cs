@@ -96,7 +96,13 @@ public partial class App : Application
         services.AddSingleton<INotificationService, WindowsNotificationService>();
         services.AddSingleton<IStrategyEngine, ThresholdStrategyEngine>();
         services.AddSingleton<AiStockSelector>();
+        services.AddSingleton<WebhookNotifier>();
+        services.AddSingleton<TradingDiaryService>();
+        services.AddSingleton<StrategySquareService>();
+        services.AddSingleton<MarketSentimentService>();
+        services.AddSingleton<PythonBridgeService>();
         services.AddSingleton<ExternalTradingAppLauncher>();
+        services.AddSingleton<MemoryMonitorService>();
         services.AddSingleton<ITradingService>(provider =>
         {
             var market = provider.GetRequiredService<IMarketDataProvider>();

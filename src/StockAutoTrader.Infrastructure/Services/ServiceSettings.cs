@@ -56,6 +56,16 @@ public class ServiceSettings
     public bool SystemToastNotification { get; set; } = false;
 
     /// <summary>
+    /// Webhook 通知地址（飞书/钉钉/通用 Webhook 均可，留空则不启用）
+    /// </summary>
+    public string WebhookUrl { get; set; } = "";
+
+    /// <summary>
+    /// Webhook 通知类型：feishu / dingtalk / generic
+    /// </summary>
+    public string WebhookType { get; set; } = "feishu";
+
+    /// <summary>
     /// 通达信可执行文件路径（用于内置启动）
     /// </summary>
     public string TongDaXinExePath { get; set; } = "";
