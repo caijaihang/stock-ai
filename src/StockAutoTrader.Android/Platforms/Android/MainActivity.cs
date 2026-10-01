@@ -10,13 +10,13 @@ namespace StockAutoTrader.AndroidApp;
 [Activity(
     Theme = "@style/MainTheme",
     MainLauncher = true,
-    LaunchMode = LaunchMode.SingleTop,
-    ConfigurationChanges = ConfigChanges.ScreenSize |
-                           ConfigChanges.Orientation |
-                           ConfigChanges.UiMode |
-                           ConfigChanges.ScreenLayout |
-                           ConfigChanges.SmallestScreenSize |
-                           ConfigChanges.Density)]
+    LaunchMode = Android.App.LaunchMode.SingleTop,
+    ConfigurationChanges = Android.Content.PM.ConfigChanges.ScreenSize |
+                           Android.Content.PM.ConfigChanges.Orientation |
+                           Android.Content.PM.ConfigChanges.UiMode |
+                           Android.Content.PM.ConfigChanges.ScreenLayout |
+                           Android.Content.PM.ConfigChanges.SmallestScreenSize |
+                           Android.Content.PM.ConfigChanges.Density)]
 public class MainActivity : MauiAppCompatActivity
 {
     /// <summary>
@@ -34,7 +34,7 @@ public class MainActivity : MauiAppCompatActivity
     private void RequestNotificationPermission()
     {
         // Android 13 (API 33) 起需要运行时请求通知权限
-        if (Build.VERSION.SdkInt < 33)
+        if (!OperatingSystem.IsAndroidVersionAtLeast(13))
         {
             return;
         }

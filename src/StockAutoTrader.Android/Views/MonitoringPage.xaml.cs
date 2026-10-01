@@ -1,15 +1,13 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using StockAutoTrader.Core.Entities;
 
 namespace StockAutoTrader.AndroidApp.Views;
 
 /// <summary>
 /// 股票监控页面（Android）
-/// 直接实现 INotifyPropertyChanged，避免 MVVM Toolkit 生成器冲突
+/// ContentPage 已继承 BindableObject（含 PropertyChanged 事件），无需再实现 INotifyPropertyChanged
 /// </summary>
-public partial class MonitoringPage : ContentPage, INotifyPropertyChanged
+public partial class MonitoringPage : ContentPage
 {
     private bool _isRunning;
 
@@ -24,7 +22,7 @@ public partial class MonitoringPage : ContentPage, INotifyPropertyChanged
             if (_isRunning != value)
             {
                 _isRunning = value;
-                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsRunning));
             }
         }
     }
@@ -46,7 +44,7 @@ public partial class MonitoringPage : ContentPage, INotifyPropertyChanged
 
     public MonitoringPage()
     {
-        StartCommand = new Command(() => StartMonitoringAsync());
+        StartCommand = new Command(() => StartMonitoring());
         StopCommand = new Command(() => StopMonitoring());
         InitializeComponent();
 
@@ -57,7 +55,7 @@ public partial class MonitoringPage : ContentPage, INotifyPropertyChanged
     /// <summary>
     /// 启动监控（预留接口，实际逻辑由 ITradingService 驱动）
     /// </summary>
-    private void StartMonitoringAsync()
+    private void StartMonitoring()
     {
         IsRunning = true;
         StatusLabel.Text = "运行中";
@@ -93,16 +91,5 @@ public partial class MonitoringPage : ContentPage, INotifyPropertyChanged
     {
         BalanceLabel.Text = balance.ToString("C");
         MarketValueLabel.Text = marketValue.ToString("C");
-    }
-
-    /// <inheritdoc />
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    /// <summary>
-    /// 触发属性变更通知
-    /// </summary>
-    private void OnPropertyChanged([CallerFilePath] string propertyName = "")
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

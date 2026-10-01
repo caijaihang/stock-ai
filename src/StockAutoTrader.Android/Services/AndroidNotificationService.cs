@@ -49,14 +49,14 @@ public class AndroidNotificationService : INotificationService
             }
 
             // 获取 Android 原生 Context
-            var platformApp = Microsoft.Maui.ApplicationModel.PlatformApplication;
-            if (!(platformApp?.Context is global::Android.Content.Context context))
+            var context = Microsoft.Maui.ApplicationModel.PlatformApplication?.Context as global::Android.Content.Context;
+            if (context is null)
             {
                 return;
             }
 
             // 创建通知渠道（Android 8.0 / API 26+）
-            if (global::Android.OS.Build.VERSION.SdkInt >= 26)
+            if (OperatingSystem.IsAndroidVersionAtLeast(8))
             {
                 var channel = new global::Android.App.NotificationChannel(
                     context,

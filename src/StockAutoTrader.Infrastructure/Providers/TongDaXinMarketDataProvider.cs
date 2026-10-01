@@ -104,20 +104,25 @@ public class TongDaXinMarketDataProvider : IMarketDataProvider, IDisposable
     /// </summary>
     public Task<MarketDataSnapshot?> GetSnapshotAsync(string stockCode, CancellationToken cancellationToken = default)
     {
-        if (_snapshots.TryGetValue(stockCode, out var cached) && cached.Timestamp > DateTime.Now.AddMinutes(-5))
+        Task<MarketDataSnapshot?> GetAsync()
         {
-            return Task.FromResult(cached);
+            if (_snapshots.TryGetValue(stockCode, out var cached) && cached.Timestamp > DateTime.Now.AddMinutes(-5))
+            {
+                return Task.FromResult<MarketDataSnapshot?>(cached);
+            }
+
+            // 回退：读取 .day 文件提供 EOD 数据
+            var daySnapshot = TryReadDayFile(stockCode);
+            if (daySnapshot != null)
+            {
+                _snapshots[stockCode] = daySnapshot;
+                return Task.FromResult<MarketDataSnapshot?>(daySnapshot);
+            }
+
+            return Task.FromResult<MarketDataSnapshot?>(_snapshots.TryGetValue(stockCode, out var s) ? s : null);
         }
 
-        // 回退：读取 .day 文件提供 EOD 数据
-        var daySnapshot = TryReadDayFile(stockCode);
-        if (daySnapshot != null)
-        {
-            _snapshots[stockCode] = daySnapshot;
-            return Task.FromResult(daySnapshot);
-        }
-
-        return Task.FromResult(_snapshots.TryGetValue(stockCode, out var s) ? s : null);
+        return GetAsync();
     }
 
     /// <summary>
