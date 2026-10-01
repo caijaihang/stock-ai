@@ -28,13 +28,13 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore NuGet packages
-        run: dotnet restore StockAutoTrader.sln
+        run: dotnet restore src/StockAutoTrader.App/StockAutoTrader.App.csproj
 
       - name: Run unit tests
         run: dotnet test tests/StockAutoTrader.Tests/StockAutoTrader.Tests.csproj -c Release
 
       - name: Build (Release)
-        run: dotnet build StockAutoTrader.sln -c Release
+        run: dotnet build src/StockAutoTrader.App/StockAutoTrader.App.csproj -c Release
 
       - name: Publish single-file WPF executable
         run: >

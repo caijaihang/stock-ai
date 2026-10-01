@@ -47,8 +47,13 @@ public class AndroidNotificationService : INotificationService
                 return;
             }
 
+            // 通知渠道与带 channelId 的 Builder 仅在 Android 8.0 (API 26) 及以上可用
+            if (!OperatingSystem.IsAndroidVersionAtLeast(8))
+            {
+                return;
+            }
+
             // 创建通知渠道（Android 8.0 / API 26+）
-            if (OperatingSystem.IsAndroidVersionAtLeast(8))
             {
                 var channel = new global::Android.App.NotificationChannel(
                     ChannelId,
