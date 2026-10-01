@@ -52,7 +52,7 @@ public class SimulatedMarketDataProviderTests
         provider.InitializeStock("000001", "平安银行", 10.0m);
         provider.InitializeStock("000002", "万科A", 20.0m);
 
-        var snapshots = await provider.GetSnapshotsAsync(["000001", "000002", "000003"]);
+        var snapshots = await provider.GetSnapshotsAsync(new[] { "000001", "000002", "000003" });
 
         Assert.Equal(2, snapshots.Count);
     }
