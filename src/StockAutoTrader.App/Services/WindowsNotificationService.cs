@@ -1,5 +1,6 @@
 using System.Media;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using StockAutoTrader.Core.Interfaces;
 using StockAutoTrader.Infrastructure.Services;

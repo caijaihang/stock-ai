@@ -94,6 +94,16 @@ public interface ITradingService
     Task<IReadOnlyList<Trade>> GetTradesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 获取日志（支持按级别/分类/股票筛选）
+    /// </summary>
+    Task<IReadOnlyList<TradingLog>> GetLogsAsync(string? level = null, string? category = null, string? stockCode = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 撤单
+    /// </summary>
+    Task<bool> CancelOrderAsync(string orderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 行情刷新事件
     /// </summary>
     event EventHandler? OnRefreshed;

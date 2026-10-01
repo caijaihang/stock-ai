@@ -194,6 +194,12 @@ public class TradingService : ITradingService
     public Task<IReadOnlyList<TradingLog>> GetLogsAsync(string? level = null, string? category = null, string? stockCode = null, CancellationToken cancellationToken = default)
         => _tradeQueryService.GetLogsAsync(level, category, stockCode, cancellationToken);
 
+    /// <summary>
+    /// 撤单：委托交易执行器撤单
+    /// </summary>
+    public Task<bool> CancelOrderAsync(string orderId, CancellationToken cancellationToken = default)
+        => _tradeExecutor.CancelOrderAsync(orderId, cancellationToken);
+
     public async Task UpdateAccountMarketValueAsync(CancellationToken cancellationToken = default)
     {
         var positions = await _positionManager.GetAllPositionsAsync(cancellationToken);
