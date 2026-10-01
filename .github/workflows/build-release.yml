@@ -50,19 +50,28 @@ jobs:
           Compress-Archive -Path "./dist/StockAutoTrader-windows-x64/*" -DestinationPath "StockAutoTrader-windows-x64.zip" -Force
           Write-Host "Built artifact for ref: ${{ github.ref_name }}"
 
-      # 每次 push 到 main 都直接发布到 Release（固定 tag latest，滚动更新）
+      # 生成版本号：v年月日.时分（每次推送唯一）
+      - name: Generate version
+        id: gen-version
+        run: |
+          $version = "v" + (Get-Date -Format "yyyy.MM.dd.HHmm")
+          Write-Output "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $version"
+
+      # 每次 push 到 main 都用新版本号发布到 Release
       - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             StockAutoTrader-windows-x64.zip
-          tag_name: latest
-          name: "StockAutoTrader 最新构建"
+          tag_name: ${{ steps.gen-version.outputs.version }}
+          name: "StockAutoTrader ${{ steps.gen-version.outputs.version }}"
           generate_release_notes: false
           draft: false
           body: |
             ## 自动构建产物
 
+            - 版本：${{ steps.gen-version.outputs.version }}
             - 平台：Windows x64（便携版，数据全部存到解压目录）
             - 格式：单文件 self-contained exe
             - 行情：支持通达信 .day 文件 / CSV 导出、同花顺 CSV 导出
