@@ -88,11 +88,15 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      - name: Install Android workload
+        run: dotnet workload install android
+
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: '11076708'
           accept-android-sdk-licenses: 'true'
+          packages: 'platform-tools;platforms;android-34;build-tools;34.0.0'
 
       - name: Build Android APK
         run: |
