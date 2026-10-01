@@ -21,9 +21,23 @@ public class WindowsNotificationService : INotificationService
         _settings = settings;
     }
 
-    public bool SoundEnabled => _settings.SoundNotification;
-    public bool PopupEnabled => _settings.PopupNotification;
-    public bool SystemToastEnabled => _settings.SystemToastNotification;
+    public bool SoundEnabled
+    {
+        get => _settings.SoundNotification;
+        set => _settings.SoundNotification = value;
+    }
+
+    public bool PopupEnabled
+    {
+        get => _settings.PopupNotification;
+        set => _settings.PopupNotification = value;
+    }
+
+    public bool SystemToastEnabled
+    {
+        get => _settings.SystemToastNotification;
+        set => _settings.SystemToastNotification = value;
+    }
 
     /// <summary>
     /// 发出通知（非阻塞）
