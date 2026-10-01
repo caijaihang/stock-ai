@@ -42,9 +42,9 @@ public class MainActivity : MauiAppCompatActivity
         // 权限字符串 "android.permission.POST_NOTIFICATIONS"
         const string postNotificationsPermission = "android.permission.POST_NOTIFICATIONS";
 
-        // 使用 PackageManager.PermissionGranted 常量（值为 0）
-        if (CheckSelfPermission(postNotificationsPermission) ==
-            Android.Content.PM.PackageManager.PermissionGranted)
+        // PERMISSION_GRANTED 在 Android 中恒为 0
+        const int permissionGranted = 0;
+        if (CheckSelfPermission(postNotificationsPermission) == permissionGranted)
         {
             return;
         }

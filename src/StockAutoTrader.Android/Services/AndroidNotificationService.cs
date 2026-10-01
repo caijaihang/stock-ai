@@ -1,12 +1,12 @@
-using Microsoft.Maui;
+using Android.App;
+using Android.Content;
 using StockAutoTrader.Core.Interfaces;
 
 namespace StockAutoTrader.AndroidApp.Services;
 
 /// <summary>
 /// Android 系统通知服务
-/// 通过 IPlatformApplication 获取原生 Android Context，
-/// 使用完全限定名 Android.* 避免与项目命名空间 StockAutoTrader.AndroidApp 冲突。
+/// 使用 Android 原生 API 发送通知，全限定名避免命名空间冲突。
 /// </summary>
 public class AndroidNotificationService : INotificationService
 {
@@ -40,16 +40,8 @@ public class AndroidNotificationService : INotificationService
                 return;
             }
 
-            // 通过 MAUI 平台 API 获取 Android 原生 Application 对象
-            // Application.Current 在非 Android 平台（如 WPF）返回 null，直接跳过
-            var currentApp = Application.Current;
-            if (currentApp is not MauiApplication)
-            {
-                return;
-            }
-
-            // 获取 Android 原生 Context
-            var context = Microsoft.Maui.ApplicationModel.PlatformApplication?.Context as global::Android.Content.Context;
+            // 获取 Android 应用级 Context（全局单例，不受 Activity 生命周期影响）
+            var context = global::Android.App.Application.Context;
             if (context is null)
             {
                 return;
@@ -59,23 +51,20 @@ public class AndroidNotificationService : INotificationService
             if (OperatingSystem.IsAndroidVersionAtLeast(8))
             {
                 var channel = new global::Android.App.NotificationChannel(
-                    context,
                     ChannelId,
-                    "StockAutoTrader")
-                {
-                    Importance = global::Android.App.NotificationImportance.High
-                };
+                    new global::Java.Lang.String("StockAutoTrader"),
+                    global::Android.App.NotificationImportance.High);
                 var channelManager = (global::Android.App.NotificationManager?)context
                     .GetSystemService(global::Android.Content.Context.NotificationService);
                 channelManager?.CreateNotificationChannel(channel);
             }
 
             var builder = new global::Android.App.Notification.Builder(context, ChannelId)
-                .SetSmallIcon(global::Android.Resource.Icon)
+                .SetSmallIcon(global::Android.Resource.Drawable.IcDialogInfo)
                 .SetContentTitle(title)
                 .SetContentText(message)
                 .SetAutoCancel(true)
-                .SetColor(isBuy ? 0xFF2E7D32 : 0xFFC62828);
+                .SetColor((int)(isBuy ? 0xFF2E7D32 : 0xFFC62828));
 
             var manager = (global::Android.App.NotificationManager?)context
                 .GetSystemService(global::Android.Content.Context.NotificationService);
