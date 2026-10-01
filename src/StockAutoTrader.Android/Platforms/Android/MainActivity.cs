@@ -10,7 +10,7 @@ namespace StockAutoTrader.AndroidApp;
 [Activity(
     Theme = "@style/MainTheme",
     MainLauncher = true,
-    LaunchMode = Android.App.LaunchMode.SingleTop,
+    LaunchMode = Android.Content.PM.LaunchMode.SingleTop,
     ConfigurationChanges = Android.Content.PM.ConfigChanges.ScreenSize |
                            Android.Content.PM.ConfigChanges.Orientation |
                            Android.Content.PM.ConfigChanges.UiMode |
