@@ -44,6 +44,26 @@ public interface ITradingService
     Task StopAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 一键暂停（保持行情连接，暂停策略判断）
+    /// </summary>
+    Task PauseAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 恢复暂停的监控
+    /// </summary>
+    Task ResumeAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 是否处于暂停状态
+    /// </summary>
+    bool IsPaused { get; }
+
+    /// <summary>
+    /// 修改刷新间隔（毫秒）
+    /// </summary>
+    void SetRefreshInterval(int intervalMs);
+
+    /// <summary>
     /// 一键清仓
     /// </summary>
     Task LiquidateAllAsync(CancellationToken cancellationToken = default);

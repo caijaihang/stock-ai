@@ -138,7 +138,7 @@ public class SimulatedMarketDataProvider : IMarketDataProvider
     }
 
     /// <summary>
-    /// 定时更新模拟行情
+    /// 定时更新模拟行情（含 A 股涨跌停限制）
     /// </summary>
     private void OnTimerTick(object? state)
     {
@@ -153,6 +153,9 @@ public class SimulatedMarketDataProvider : IMarketDataProvider
             var change = (_random.NextDouble() * 2 - 1) * (double)_volatility;
             var newPrice = Math.Round(snapshot.CurrentPrice * (1 + (decimal)change), 2);
             newPrice = newPrice <= 0 ? snapshot.PreviousClose : newPrice;
+
+            // A 股涨跌停限制
+            newPrice = ClampToPriceLimit(newPrice, snapshot.PreviousClose, code, snapshot.StockName);
 
             var newSnapshot = snapshot with
             {
@@ -169,5 +172,24 @@ public class SimulatedMarketDataProvider : IMarketDataProvider
             _snapshots[code] = newSnapshot;
             OnMarketData?.Invoke(this, newSnapshot);
         }
+    }
+
+    /// <summary>
+    /// 将价格限制在涨跌停范围内
+    /// </summary>
+    private static decimal ClampToPriceLimit(decimal price, decimal previousClose, string code, string name)
+    {
+        if (previousClose <= 0) return price;
+        decimal limit;
+        if (code.StartsWith("300") || code.StartsWith("688") || code.StartsWith("301"))
+            limit = 20m;
+        else if (name.Contains("ST") || name.Contains("*ST"))
+            limit = 5m;
+        else
+            limit = 10m;
+
+        var upper = Math.Round(previousClose * (1 + limit / 100m), 2);
+        var lower = Math.Round(previousClose * (1 - limit / 100m), 2);
+        return Math.Clamp(price, lower, upper);
     }
 }

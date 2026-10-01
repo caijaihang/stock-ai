@@ -39,6 +39,12 @@ public partial class Trade : ObservableObject
     private decimal _commission;
 
     [ObservableProperty]
+    private decimal _stampTax;
+
+    [ObservableProperty]
+    private decimal _transferFee;
+
+    [ObservableProperty]
     private DateTime _tradeTime = DateTime.Now;
 
     [ObservableProperty]

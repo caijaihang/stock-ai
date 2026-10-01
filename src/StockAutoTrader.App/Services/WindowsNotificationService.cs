@@ -2,68 +2,91 @@ using System.Media;
 using System.Windows;
 using System.Windows.Threading;
 using StockAutoTrader.Core.Interfaces;
+using StockAutoTrader.Infrastructure.Services;
 
 namespace StockAutoTrader.App.Services;
 
 /// <summary>
-/// Windows 通知服务实现（声音 + 弹窗 + 系统 Toast）
+/// Windows 通知服务（声音 + 非阻塞弹窗 + 系统 Toast）
+/// 弹窗使用独立 Window 而非 MessageBox，避免阻塞 UI 线程
 /// </summary>
 public class WindowsNotificationService : INotificationService
 {
     private readonly Dispatcher _dispatcher;
+    private readonly ServiceSettings _settings;
 
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    public WindowsNotificationService()
+    public WindowsNotificationService(ServiceSettings settings)
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
+        _settings = settings;
     }
 
-    public bool SoundEnabled { get; set; } = true;
-    public bool PopupEnabled { get; set; } = true;
-    public bool SystemToastEnabled { get; set; } = false;
+    public bool SoundEnabled => _settings.SoundNotification;
+    public bool PopupEnabled => _settings.PopupNotification;
+    public bool SystemToastEnabled => _settings.SystemToastNotification;
 
     /// <summary>
-    /// 发出通知
+    /// 发出通知（非阻塞）
     /// </summary>
     public void Notify(string title, string message, bool isBuy = false)
     {
-        // 1. 声音
         if (SoundEnabled)
         {
             PlaySound(isBuy ? SystemSounds.Beep : SystemSounds.Exclamation);
         }
 
-        // 2. 弹窗（可选）
         if (PopupEnabled)
         {
             ShowPopup(title, message);
         }
 
-        // 3. 系统 Toast（预留）
         if (SystemToastEnabled)
         {
-            // 实际可用 Windows.UI.Notifications 或 TaskbarToast，此处预留
+            // 系统 Toast 预留（Windows.UI.Notifications）
         }
     }
 
-    /// <summary>
-    /// 播放声音
-    /// </summary>
     private void PlaySound(SystemSound sound)
     {
-        _dispatcher.Invoke(() => sound.Play());
+        _dispatcher.BeginInvoke(new Action(() => sound.Play()));
     }
 
     /// <summary>
-    /// 显示弹窗
+    /// 非阻塞弹窗：使用独立 Window 并自动关闭
     /// </summary>
     private void ShowPopup(string title, string message)
     {
-        _dispatcher.Invoke(() =>
+        _dispatcher.BeginInvoke(new Action(() =>
         {
-            MessageBox.Show($"{title}\n{message}", "StockAutoTrader 通知", MessageBoxButton.OK, MessageBoxImage.Information);
-        });
+            var win = new Window
+            {
+                Title = "StockAutoTrader 通知",
+                Width = 320,
+                Height = 140,
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                WindowStyle = WindowStyle.ToolWindow,
+                ShowInTaskbar = false,
+                Topmost = true,
+                Background = System.Windows.Media.Brushes.White,
+                Content = new StackPanel
+                {
+                    Margin = new Thickness(15),
+                    Children =
+                    {
+                        new TextBlock { Text = title, FontWeight = FontWeights.Bold, FontSize = 14, Margin = new Thickness(0,0,0,8) },
+                        new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap }
+                    }
+                }
+            };
+            // 定位到右下角
+            var area = SystemParameters.WorkArea;
+            win.Left = area.Right - win.Width - 20;
+            win.Top = area.Bottom - win.Height - 20;
+            win.Show();
+            // 3 秒后自动关闭
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            timer.Tick += (_, _) => { win.Close(); timer.Stop(); };
+            timer.Start();
+        }));
     }
 }

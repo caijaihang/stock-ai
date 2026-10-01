@@ -20,6 +20,9 @@ public static class MarketDataProviderFactory
                 settings.TdxInstallDirectory),
             "tonghuashun" => new TongHuaShunMarketDataProvider(
                 settings.ResolveTongHuaShunExportDirectory()),
+            "websocket" => new WebSocketMarketDataProvider(
+                settings.WebSocketServerUrl,
+                settings.WebSocketApiKey),
             _ => new SimulatedMarketDataProvider(0.005)
         };
     }

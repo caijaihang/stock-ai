@@ -3,10 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         mc:Ignorable="d"
-        Title="StockAutoTrader - 股票自动监控与交易" 
-        Height="800" Width="1400"
+        Title="StockAutoTrader - 股票自动监控与交易"
+        Height="800" Width="1500"
         WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <local:ProfitLossColorConverter x:Key="ProfitLossColorConverter" xmlns:local="clr-namespace:StockAutoTrader.App.Converters"/>
+        <local:StatusToColorConverter x:Key="StatusToColorConverter" xmlns:local="clr-namespace:StockAutoTrader.App.Converters"/>
+    </Window.Resources>
     <Window.DataContext>
         <vm:MainViewModel xmlns:vm="clr-namespace:StockAutoTrader.App.ViewModels"/>
     </Window.DataContext>
@@ -18,29 +23,31 @@
         </Grid.RowDefinitions>
 
         <!-- 标题栏 -->
-        <Border Grid.Row="0" Background="#FF2D2D2D" Padding="15,10">
+        <Border Grid.Row="0" Background="#FF2D2D2D" Padding="12,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="StockAutoTrader" FontSize="22" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="股票自动监控与模拟交易" FontSize="14" Foreground="#FFAAAAAA" Margin="15,0,0,0" VerticalAlignment="Bottom"/>
+                    <TextBlock Text="StockAutoTrader" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="股票自动监控与模拟交易" FontSize="13" Foreground="#FFAAAAAA" Margin="12,0,0,0" VerticalAlignment="Bottom"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding StatusText}" Foreground="White" FontSize="14" Margin="0,0,20,0" VerticalAlignment="Center"/>
-                    <Button Content="启动" Command="{Binding StartCommand}" Width="80" Height="32" Margin="5,0" Background="#FF4CAF50" Foreground="White" BorderThickness="0"/>
-                    <Button Content="停止" Command="{Binding StopCommand}" Width="80" Height="32" Margin="5,0" Background="#FFF44336" Foreground="White" BorderThickness="0"/>
-                    <Button Content="全部启动" Command="{Binding StartAllCommand}" Width="80" Height="32" Margin="5,0"/>
-                    <Button Content="全部停止" Command="{Binding StopAllCommand}" Width="80" Height="32" Margin="5,0"/>
-                    <Button Content="一键清仓" Command="{Binding LiquidateCommand}" Width="80" Height="32" Margin="5,0" Background="#FFFF9800" Foreground="White" BorderThickness="0"/>
+                    <TextBlock Text="{Binding StatusText}" Foreground="White" FontSize="13" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                    <Button Content="启动" Command="{Binding StartCommand}" Width="70" Height="30" Margin="3,0" Background="#FF4CAF50" Foreground="White" BorderThickness="0"/>
+                    <Button Content="停止" Command="{Binding StopCommand}" Width="70" Height="30" Margin="3,0" Background="#FFF44336" Foreground="White" BorderThickness="0"/>
+                    <Button Content="暂停" Command="{Binding PauseCommand}" Width="70" Height="30" Margin="3,0" Background="#FFFF9800" Foreground="White" BorderThickness="0"/>
+                    <Button Content="恢复" Command="{Binding ResumeCommand}" Width="70" Height="30" Margin="3,0"/>
+                    <Button Content="全部启动" Command="{Binding StartAllCommand}" Width="70" Height="30" Margin="3,0"/>
+                    <Button Content="全部停止" Command="{Binding StopAllCommand}" Width="70" Height="30" Margin="3,0"/>
+                    <Button Content="一键清仓" Command="{Binding LiquidateCommand}" Width="80" Height="30" Margin="3,0" Background="#FFE91E63" Foreground="White" BorderThickness="0"/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <!-- 账户概览 -->
-        <Border Grid.Row="1" Background="#FFF5F5F5" Padding="15,10" BorderBrush="#FFDDDDDD" BorderThickness="0,0,0,1">
+        <Border Grid.Row="1" Background="#FFF5F5F5" Padding="12,8" BorderBrush="#FFDDDDDD" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -49,158 +56,319 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="总资产" Foreground="#FF666666" FontSize="12"/>
-                    <TextBlock Text="{Binding Account.TotalAssets, StringFormat=C}" FontSize="18" FontWeight="Bold" Foreground="#FF333333"/>
+                    <TextBlock Text="总资产" Foreground="#FF666666" FontSize="11"/>
+                    <TextBlock Text="{Binding Account.TotalAssets, StringFormat=C}" FontSize="17" FontWeight="Bold" Foreground="#FF333333"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1">
-                    <TextBlock Text="可用资金" Foreground="#FF666666" FontSize="12"/>
-                    <TextBlock Text="{Binding Account.AvailableCash, StringFormat=C}" FontSize="18" FontWeight="Bold" Foreground="#FF333333"/>
+                    <TextBlock Text="可用资金" Foreground="#FF666666" FontSize="11"/>
+                    <TextBlock Text="{Binding Account.AvailableCash, StringFormat=C}" FontSize="17" FontWeight="Bold" Foreground="#FF333333"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="总市值" Foreground="#FF666666" FontSize="12"/>
-                    <TextBlock Text="{Binding Account.TotalMarketValue, StringFormat=C}" FontSize="18" FontWeight="Bold" Foreground="#FF333333"/>
+                    <TextBlock Text="总市值" Foreground="#FF666666" FontSize="11"/>
+                    <TextBlock Text="{Binding Account.TotalMarketValue, StringFormat=C}" FontSize="17" FontWeight="Bold" Foreground="#FF333333"/>
                 </StackPanel>
                 <StackPanel Grid.Column="3">
-                    <TextBlock Text="总盈亏" Foreground="#FF666666" FontSize="12"/>
-                    <TextBlock Text="{Binding Account.TotalPnl, StringFormat=C}" FontSize="18" FontWeight="Bold" Foreground="{Binding Account.TotalPnl, Converter={StaticResource ProfitLossColorConverter}}"/>
+                    <TextBlock Text="总盈亏" Foreground="#FF666666" FontSize="11"/>
+                    <TextBlock Text="{Binding Account.TotalPnl, StringFormat=C}" FontSize="17" FontWeight="Bold" Foreground="{Binding Account.TotalPnl, Converter={StaticResource ProfitLossColorConverter}}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="4">
-                    <TextBlock Text="盈亏率" Foreground="#FF666666" FontSize="12"/>
-                    <TextBlock Text="{Binding Account.TotalPnlPercent, StringFormat={}{0:F2}%}" FontSize="18" FontWeight="Bold" Foreground="#FF333333"/>
+                    <TextBlock Text="盈亏率" Foreground="#FF666666" FontSize="11"/>
+                    <TextBlock Text="{Binding Account.TotalPnlPercent, StringFormat={}{0:F2}%}" FontSize="17" FontWeight="Bold" Foreground="#FF333333"/>
                 </StackPanel>
                 <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock Text="刷新间隔(秒):" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <ComboBox Width="80" Height="28" SelectedItem="{Binding RefreshIntervalSeconds}">
+                    <TextBlock Text="刷新(秒):" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <ComboBox Width="60" Height="26" SelectedItem="{Binding RefreshIntervalSeconds}" SelectionChanged="RefreshInterval_SelectionChanged">
                         <ComboBoxItem Content="1"/>
                         <ComboBoxItem Content="3"/>
                         <ComboBoxItem Content="5"/>
+                        <ComboBoxItem Content="10"/>
                     </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                    <Button Content="启动通达信" Command="{Binding LaunchTongDaXinCommand}" Width="90" Height="28" Margin="3,0"/>
+                    <Button Content="启动同花顺" Command="{Binding LaunchTongHuaShunCommand}" Width="90" Height="28" Margin="3,0"/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <!-- 主内容区 -->
-        <TabControl Grid.Row="2" Margin="10">
+        <TabControl Grid.Row="2" Margin="8">
+            <!-- 股票监控 -->
             <TabItem Header="股票监控">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    
-                    <!-- 添加股票 -->
-                    <Border Grid.Row="0" Background="White" Padding="10" Margin="0,0,0,10" CornerRadius="4" BorderBrush="#FFDDDDDD" BorderThickness="1">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBox Text="{Binding NewStockCode}" Width="100" Height="28" Margin="5,0" ToolTip="股票代码"/>
-                            <TextBox Text="{Binding NewStockName}" Width="120" Height="28" Margin="5,0" ToolTip="股票名称"/>
-                            <TextBlock Text="买入阈值(%)" VerticalAlignment="Center" Margin="10,0,5,0"/>
-                            <TextBox Text="{Binding NewBuyThreshold}" Width="70" Height="28" Margin="5,0"/>
-                            <TextBlock Text="卖出阈值(%)" VerticalAlignment="Center" Margin="10,0,5,0"/>
-                            <TextBox Text="{Binding NewSellThreshold}" Width="70" Height="28" Margin="5,0"/>
-                            <TextBlock Text="买入数量" VerticalAlignment="Center" Margin="10,0,5,0"/>
-                            <TextBox Text="{Binding NewBuyQuantity}" Width="70" Height="28" Margin="5,0"/>
-                            <TextBlock Text="卖出数量" VerticalAlignment="Center" Margin="10,0,5,0"/>
-                            <TextBox Text="{Binding NewSellQuantity}" Width="70" Height="28" Margin="5,0"/>
-                            <Button Content="添加" Command="{Binding AddStockCommand}" Width="80" Height="28" Margin="15,0,5,0" Background="#FF2196F3" Foreground="White" BorderThickness="0"/>
-                            <Button Content="删除" Command="{Binding DeleteStockCommand}" Width="80" Height="28" Margin="5,0" Background="#FF757575" Foreground="White" BorderThickness="0"/>
-                            <Button Content="启停" Command="{Binding ToggleStockCommand}" Width="80" Height="28" Margin="5,0"/>
-                        </StackPanel>
+                    <Border Grid.Row="0" Background="White" Padding="8" Margin="0,0,0,8" CornerRadius="4" BorderBrush="#FFDDDDDD" BorderThickness="1">
+                        <WrapPanel>
+                            <TextBox Text="{Binding NewStockCode}" Width="90" Height="26" Margin="3,0" ToolTip="股票代码"/>
+                            <TextBox Text="{Binding NewStockName}" Width="100" Height="26" Margin="3,0" ToolTip="股票名称"/>
+                            <ComboBox Width="70" Height="26" Margin="3,0" SelectedItem="{Binding NewMarket}" ItemsSource="{Binding MarketTypes}"/>
+                            <TextBlock Text="基准价:" VerticalAlignment="Center" Margin="8,0,3,0"/>
+                            <ComboBox Width="90" Height="26" Margin="3,0" SelectedItem="{Binding NewBenchmarkType}" ItemsSource="{Binding BenchmarkTypes}"/>
+                            <TextBox Text="{Binding NewCustomBenchmarkPrice}" Width="70" Height="26" Margin="3,0" ToolTip="自定义基准价"/>
+                            <TextBlock Text="买阈值%:" VerticalAlignment="Center" Margin="8,0,3,0"/>
+                            <TextBox Text="{Binding NewBuyThreshold}" Width="55" Height="26" Margin="3,0"/>
+                            <TextBlock Text="卖阈值%:" VerticalAlignment="Center" Margin="8,0,3,0"/>
+                            <TextBox Text="{Binding NewSellThreshold}" Width="55" Height="26" Margin="3,0"/>
+                            <TextBlock Text="买量:" VerticalAlignment="Center" Margin="8,0,3,0"/>
+                            <TextBox Text="{Binding NewBuyQuantity}" Width="55" Height="26" Margin="3,0"/>
+                            <TextBlock Text="卖量:" VerticalAlignment="Center" Margin="8,0,3,0"/>
+                            <TextBox Text="{Binding NewSellQuantity}" Width="55" Height="26" Margin="3,0"/>
+                            <TextBlock Text="冷却秒:" VerticalAlignment="Center" Margin="8,0,3,0"/>
+                            <TextBox Text="{Binding NewCooldownSeconds}" Width="55" Height="26" Margin="3,0"/>
+                            <Button Content="添加" Command="{Binding AddStockCommand}" Width="70" Height="26" Margin="12,3,3,3" Background="#FF2196F3" Foreground="White" BorderThickness="0"/>
+                            <Button Content="编辑" Command="{Binding EditStockCommand}" Width="70" Height="26" Margin="3"/>
+                            <Button Content="删除" Command="{Binding DeleteStockCommand}" Width="70" Height="26" Margin="3" Background="#FF757575" Foreground="White" BorderThickness="0"/>
+                            <Button Content="启停" Command="{Binding ToggleStockCommand}" Width="70" Height="26" Margin="3"/>
+                        </WrapPanel>
                     </Border>
-
-                    <!-- 股票列表 -->
-                    <DataGrid Grid.Row="1" ItemsSource="{Binding Stocks}" SelectedItem="{Binding SelectedStock}" 
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding Stocks}" SelectedItem="{Binding SelectedStock}"
                               AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal"
                               RowHeaderWidth="0" AlternatingRowBackground="#FFF9F9F9">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="80"/>
-                            <DataGridTextColumn Header="名称" Binding="{Binding StockName}" Width="100"/>
-                            <DataGridTextColumn Header="基准类型" Binding="{Binding BenchmarkPriceType}" Width="90"/>
-                            <DataGridTextColumn Header="买入阈值(%)" Binding="{Binding BuyThresholdPercent, StringFormat={}{0:F2}}" Width="100"/>
-                            <DataGridTextColumn Header="卖出阈值(%)" Binding="{Binding SellThresholdPercent, StringFormat={}{0:F2}}" Width="100"/>
-                            <DataGridTextColumn Header="买入数量" Binding="{Binding BuyQuantity}" Width="90"/>
-                            <DataGridTextColumn Header="卖出数量" Binding="{Binding SellQuantity}" Width="90"/>
-                            <DataGridTextColumn Header="冷却(秒)" Binding="{Binding CooldownSeconds}" Width="90"/>
-                            <DataGridTextColumn Header="最大买入" Binding="{Binding MaxBuyTimesPerDay}" Width="80"/>
-                            <DataGridTextColumn Header="最大卖出" Binding="{Binding MaxSellTimesPerDay}" Width="80"/>
-                            <DataGridTextColumn Header="交易时段" Binding="{Binding TradingHours}" Width="120"/>
-                            <DataGridTextColumn Header="T+1" Binding="{Binding T1Enabled}" Width="50"/>
-                            <DataGridTextColumn Header="订单类型" Binding="{Binding OrderType}" Width="100"/>
-                            <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="80">
+                            <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="70"/>
+                            <DataGridTextColumn Header="名称" Binding="{Binding StockName}" Width="80"/>
+                            <DataGridTextColumn Header="现价" Binding="{Binding CurrentPrice, StringFormat=F2}" Width="70"/>
+                            <DataGridTextColumn Header="涨跌幅%" Binding="{Binding ChangePercent, StringFormat={}{0:F2}}" Width="75">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding ChangePercent, Converter={StaticResource ProfitLossColorConverter}}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="基准价" Binding="{Binding BenchmarkPrice, StringFormat=F2}" Width="75"/>
+                            <DataGridTextColumn Header="买阈值%" Binding="{Binding BuyThresholdPercent, StringFormat=F2}" Width="70"/>
+                            <DataGridTextColumn Header="卖阈值%" Binding="{Binding SellThresholdPercent, StringFormat=F2}" Width="70"/>
+                            <DataGridTextColumn Header="持仓" Binding="{Binding HoldingQuantity}" Width="60"/>
+                            <DataGridTextColumn Header="可用" Binding="{Binding AvailableQuantity}" Width="60"/>
+                            <DataGridTextColumn Header="成本" Binding="{Binding CostPrice, StringFormat=F2}" Width="70"/>
+                            <DataGridTextColumn Header="市值" Binding="{Binding MarketValue, StringFormat=N0}" Width="90"/>
+                            <DataGridTextColumn Header="浮动盈亏" Binding="{Binding UnrealizedPnl, StringFormat=F2}" Width="90">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding UnrealizedPnl, Converter={StaticResource ProfitLossColorConverter}}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="冷却秒" Binding="{Binding CooldownSeconds}" Width="60"/>
+                            <DataGridTextColumn Header="最大买" Binding="{Binding MaxBuyTimesPerDay}" Width="55"/>
+                            <DataGridTextColumn Header="最大卖" Binding="{Binding MaxSellTimesPerDay}" Width="55"/>
+                            <DataGridTextColumn Header="时段" Binding="{Binding TradingHours}" Width="100"/>
+                            <DataGridTextColumn Header="T+1" Binding="{Binding T1Enabled}" Width="45"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="60">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="上次买入触发" Binding="{Binding LastBuyTriggerTime, StringFormat={}{0:HH:mm:ss}}" Width="120"/>
-                            <DataGridTextColumn Header="上次卖出触发" Binding="{Binding LastSellTriggerTime, StringFormat={}{0:HH:mm:ss}}" Width="120"/>
+                            <DataGridTextColumn Header="上次买触发" Binding="{Binding LastBuyTriggerTime, StringFormat={}{0:HH:mm:ss}}" Width="90"/>
+                            <DataGridTextColumn Header="上次卖触发" Binding="{Binding LastSellTriggerTime, StringFormat={}{0:HH:mm:ss}}" Width="90"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
             </TabItem>
 
+            <!-- 持仓 -->
             <TabItem Header="持仓">
-                <DataGrid ItemsSource="{Binding Positions}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="100"/>
-                        <DataGridTextColumn Header="名称" Binding="{Binding StockName}" Width="120"/>
-                        <DataGridTextColumn Header="总数量" Binding="{Binding TotalQuantity}" Width="100"/>
-                        <DataGridTextColumn Header="可用数量" Binding="{Binding AvailableQuantity}" Width="100"/>
-                        <DataGridTextColumn Header="成本价" Binding="{Binding AverageCost, StringFormat=C}" Width="100"/>
-                        <DataGridTextColumn Header="现价" Binding="{Binding CurrentPrice, StringFormat=C}" Width="100"/>
-                        <DataGridTextColumn Header="市值" Binding="{Binding MarketValue, StringFormat=C}" Width="120"/>
-                        <DataGridTextColumn Header="浮动盈亏" Binding="{Binding UnrealizedPnl, StringFormat=C}" Width="120"/>
-                        <DataGridTextColumn Header="盈亏率" Binding="{Binding UnrealizedPnlPercent, StringFormat={}{0:F2}%}" Width="100"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="220"/>
+                    </Grid.RowDefinitions>
+                    <DataGrid Grid.Row="0" ItemsSource="{Binding Positions}" SelectedItem="{Binding SelectedPosition}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="100"/>
+                            <DataGridTextColumn Header="名称" Binding="{Binding StockName}" Width="120"/>
+                            <DataGridTextColumn Header="总数量" Binding="{Binding TotalQuantity}" Width="100"/>
+                            <DataGridTextColumn Header="可用数量" Binding="{Binding AvailableQuantity}" Width="100"/>
+                            <DataGridTextColumn Header="成本价" Binding="{Binding AverageCost, StringFormat=F2}" Width="100"/>
+                            <DataGridTextColumn Header="现价" Binding="{Binding CurrentPrice, StringFormat=F2}" Width="100"/>
+                            <DataGridTextColumn Header="市值" Binding="{Binding MarketValue, StringFormat=N0}" Width="120"/>
+                            <DataGridTextColumn Header="浮动盈亏" Binding="{Binding UnrealizedPnl, StringFormat=F2}" Width="120">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding UnrealizedPnl, Converter={StaticResource ProfitLossColorConverter}}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="盈亏率%" Binding="{Binding UnrealizedPnlPercent, StringFormat={}{0:F2}}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <!-- 价格走势图（选中持仓的历史价格） -->
+                    <Border Grid.Row="1" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="8">
+                        <vc:CartesianChart Series="{Binding PriceChartSeries}" LegendPosition="Hidden" Height="200"/>
+                    </Border>
+                </Grid>
             </TabItem>
 
+            <!-- 委托 -->
             <TabItem Header="委托">
-                <DataGrid ItemsSource="{Binding Orders}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="委托号" Binding="{Binding OrderId}" Width="180"/>
-                        <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="100"/>
-                        <DataGridTextColumn Header="方向" Binding="{Binding Side}" Width="80"/>
-                        <DataGridTextColumn Header="类型" Binding="{Binding OrderType}" Width="100"/>
-                        <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="80"/>
-                        <DataGridTextColumn Header="已成交" Binding="{Binding FilledQuantity}" Width="80"/>
-                        <DataGridTextColumn Header="委托价" Binding="{Binding Price, StringFormat=C}" Width="100"/>
-                        <DataGridTextColumn Header="成交价" Binding="{Binding FilledPrice, StringFormat=C}" Width="100"/>
-                        <DataGridTextColumn Header="佣金" Binding="{Binding Commission, StringFormat=C}" Width="100"/>
-                        <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="100"/>
-                        <DataGridTextColumn Header="时间" Binding="{Binding OrderTime, StringFormat={}{0:HH:mm:ss}}" Width="100"/>
-                        <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0" Content="撤单" Command="{Binding CancelOrderCommand}" Width="100" Height="28" Margin="0,0,0,8" HorizontalAlignment="Left" Background="#FFF44336" Foreground="White" BorderThickness="0"/>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding Orders}" SelectedItem="{Binding SelectedOrder}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="委托号" Binding="{Binding OrderId}" Width="160"/>
+                            <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="80"/>
+                            <DataGridTextColumn Header="方向" Binding="{Binding Side}" Width="60"/>
+                            <DataGridTextColumn Header="类型" Binding="{Binding OrderType}" Width="90"/>
+                            <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="70"/>
+                            <DataGridTextColumn Header="已成交" Binding="{Binding FilledQuantity}" Width="70"/>
+                            <DataGridTextColumn Header="委托价" Binding="{Binding Price, StringFormat=F2}" Width="80"/>
+                            <DataGridTextColumn Header="成交价" Binding="{Binding FilledPrice, StringFormat=F2}" Width="80"/>
+                            <DataGridTextColumn Header="佣金" Binding="{Binding Commission, StringFormat=F2}" Width="70"/>
+                            <DataGridTextColumn Header="印花税" Binding="{Binding StampTax, StringFormat=F2}" Width="70"/>
+                            <DataGridTextColumn Header="过户费" Binding="{Binding TransferFee, StringFormat=F4}" Width="70"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="80"/>
+                            <DataGridTextColumn Header="时间" Binding="{Binding OrderTime, StringFormat={}{0:HH:mm:ss}}" Width="80"/>
+                            <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
             </TabItem>
 
+            <!-- 成交 -->
             <TabItem Header="成交">
                 <DataGrid ItemsSource="{Binding Trades}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="成交号" Binding="{Binding TradeId}" Width="180"/>
-                        <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="100"/>
-                        <DataGridTextColumn Header="方向" Binding="{Binding Side}" Width="80"/>
-                        <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="80"/>
-                        <DataGridTextColumn Header="成交价" Binding="{Binding Price, StringFormat=C}" Width="100"/>
-                        <DataGridTextColumn Header="成交额" Binding="{Binding Amount, StringFormat=C}" Width="120"/>
-                        <DataGridTextColumn Header="佣金" Binding="{Binding Commission, StringFormat=C}" Width="100"/>
-                        <DataGridTextColumn Header="时间" Binding="{Binding TradeTime, StringFormat={}{0:HH:mm:ss}}" Width="100"/>
+                        <DataGridTextColumn Header="成交号" Binding="{Binding TradeId}" Width="160"/>
+                        <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="80"/>
+                        <DataGridTextColumn Header="方向" Binding="{Binding Side}" Width="60"/>
+                        <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="70"/>
+                        <DataGridTextColumn Header="成交价" Binding="{Binding Price, StringFormat=F2}" Width="80"/>
+                        <DataGridTextColumn Header="成交额" Binding="{Binding Amount, StringFormat=N0}" Width="110"/>
+                        <DataGridTextColumn Header="佣金" Binding="{Binding Commission, StringFormat=F2}" Width="70"/>
+                        <DataGridTextColumn Header="印花税" Binding="{Binding StampTax, StringFormat=F2}" Width="70"/>
+                        <DataGridTextColumn Header="过户费" Binding="{Binding TransferFee, StringFormat=F4}" Width="70"/>
+                        <DataGridTextColumn Header="时间" Binding="{Binding TradeTime, StringFormat={}{0:HH:mm:ss}}" Width="80"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>
 
+            <!-- 日志 -->
             <TabItem Header="日志">
-                <DataGrid ItemsSource="{Binding Logs}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="时间" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="100"/>
-                        <DataGridTextColumn Header="级别" Binding="{Binding Level}" Width="80"/>
-                        <DataGridTextColumn Header="分类" Binding="{Binding Category}" Width="100"/>
-                        <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="100"/>
-                        <DataGridTextColumn Header="消息" Binding="{Binding Message}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="级别:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox Width="100" Height="26" SelectedItem="{Binding LogFilterLevel}">
+                            <ComboBoxItem Content=""/>
+                            <ComboBoxItem Content="INFO"/>
+                            <ComboBoxItem Content="WARNING"/>
+                            <ComboBoxItem Content="ERROR"/>
+                            <ComboBoxItem Content="TRADE"/>
+                            <ComboBoxItem Content="STRATEGY"/>
+                        </ComboBox>
+                        <TextBlock Text="分类:" VerticalAlignment="Center" Margin="15,0,5,0"/>
+                        <ComboBox Width="100" Height="26" SelectedItem="{Binding LogFilterCategory}">
+                            <ComboBoxItem Content=""/>
+                            <ComboBoxItem Content="UI"/>
+                            <ComboBoxItem Content="Order"/>
+                            <ComboBoxItem Content="TradingService"/>
+                            <ComboBoxItem Content="Strategy"/>
+                        </ComboBox>
+                        <TextBlock Text="代码:" VerticalAlignment="Center" Margin="15,0,5,0"/>
+                        <TextBox Text="{Binding LogFilterStock}" Width="100" Height="26"/>
+                        <Button Content="筛选" Command="{Binding FilterLogsCommand}" Width="70" Height="26" Margin="10,0,5,0"/>
+                    </StackPanel>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding Logs}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="时间" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="150"/>
+                            <DataGridTextColumn Header="级别" Binding="{Binding Level}" Width="80"/>
+                            <DataGridTextColumn Header="分类" Binding="{Binding Category}" Width="100"/>
+                            <DataGridTextColumn Header="代码" Binding="{Binding StockCode}" Width="90"/>
+                            <DataGridTextColumn Header="消息" Binding="{Binding Message}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 设置 -->
+            <TabItem Header="设置">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="行情与交易" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,20">
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="行情源" Margin="0,0,0,3"/>
+                                <ComboBox Height="28" SelectedItem="{Binding SettingsMarketProvider}">
+                                    <ComboBoxItem Content="Simulated"/>
+                                    <ComboBoxItem Content="TongDaXin"/>
+                                    <ComboBoxItem Content="TongHuaShun"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="交易执行器" Margin="0,0,0,3"/>
+                                <ComboBox Height="28" SelectedItem="{Binding SettingsTradeExecutor}">
+                                    <ComboBoxItem Content="Simulated"/>
+                                    <ComboBoxItem Content="Real"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="手续费率" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsCommissionRate}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="滑点" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsSlippage}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="初始资金" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsInitialCapital}"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="通知方式" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="3" Margin="0,0,0,20">
+                            <CheckBox Content="声音通知" IsChecked="{Binding SettingsSoundNotification}" Margin="0,5"/>
+                            <CheckBox Content="弹窗通知" IsChecked="{Binding SettingsPopupNotification}" Margin="0,5"/>
+                            <CheckBox Content="系统Toast" IsChecked="{Binding SettingsSystemToastNotification}" Margin="0,5"/>
+                        </UniformGrid>
+
+                        <TextBlock Text="外部程序路径" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,20">
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="通达信 exe 路径" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsTongDaXinExePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="同花顺 exe 路径" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsTongHuaShunExePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="AI 选股" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,20">
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="AI 选股 API 地址" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsAiStockApiUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,10">
+                                <TextBlock Text="AI 选股 API Key" Margin="0,0,0,3"/>
+                                <TextBox Height="28" Text="{Binding SettingsAiStockApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="保存设置" Command="{Binding SaveSettingsCommand}" Width="120" Height="32" Margin="5" Background="#FF4CAF50" Foreground="White" BorderThickness="0"/>
+                            <Button Content="恢复默认" Command="{Binding ResetSettingsCommand}" Width="120" Height="32" Margin="5"/>
+                            <Button Content="导出配置" Command="{Binding ExportConfigCommand}" Width="120" Height="32" Margin="5"/>
+                            <Button Content="导入配置" Command="{Binding ImportConfigCommand}" Width="120" Height="32" Margin="5"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </Grid>

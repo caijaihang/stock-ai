@@ -37,6 +37,7 @@ public class RealTradeExecutor : ITradeExecutor, IDisposable
     private readonly string _filledDirectory;
     private readonly decimal _commissionRate;
     private readonly Timer _fillWatcher;
+    private readonly FileSystemWatcher _filledDirWatcher;
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _processLock = new(1, 1);
 
@@ -93,6 +94,16 @@ public class RealTradeExecutor : ITradeExecutor, IDisposable
             null,
             TimeSpan.Zero,
             TimeSpan.FromMilliseconds(fillWatcherIntervalMs));
+
+        // 文件系统监视器：成交文件到达时立即触发处理（Timer 作为兜底）
+        _filledDirWatcher = new FileSystemWatcher(_filledDirectory, "*.json")
+        {
+            IncludeSubdirectories = false,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+            EnableRaisingEvents = true
+        };
+        _filledDirWatcher.Created += (_, e) => _ = ProcessSingleFilledFileAsync(e.FullPath);
+        _filledDirWatcher.Changed += (_, e) => _ = ProcessSingleFilledFileAsync(e.FullPath);
     }
 
     /// <summary>
@@ -397,6 +408,7 @@ public class RealTradeExecutor : ITradeExecutor, IDisposable
     {
         _cts.Cancel();
         _fillWatcher.Dispose();
+        _filledDirWatcher.Dispose();
         _cts.Dispose();
         _processLock.Dispose();
     }

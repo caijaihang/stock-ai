@@ -41,6 +41,51 @@ public class ServiceSettings
     public bool T1Enabled { get; set; } = true;
 
     /// <summary>
+    /// 是否启用声音通知
+    /// </summary>
+    public bool SoundNotification { get; set; } = true;
+
+    /// <summary>
+    /// 是否启用弹窗通知
+    /// </summary>
+    public bool PopupNotification { get; set; } = true;
+
+    /// <summary>
+    /// 是否启用系统 Toast 通知
+    /// </summary>
+    public bool SystemToastNotification { get; set; } = false;
+
+    /// <summary>
+    /// 通达信可执行文件路径（用于内置启动）
+    /// </summary>
+    public string TongDaXinExePath { get; set; } = "";
+
+    /// <summary>
+    /// 同花顺可执行文件路径（用于内置启动）
+    /// </summary>
+    public string TongHuaShunExePath { get; set; } = "";
+
+    /// <summary>
+    /// AI 选股 API 地址（可选，接入智能选股服务）
+    /// </summary>
+    public string AiStockApiUrl { get; set; } = "";
+
+    /// <summary>
+    /// AI 选股 API Key
+    /// </summary>
+    public string AiStockApiKey { get; set; } = "";
+
+    /// <summary>
+    /// WebSocket 行情服务器地址（ws:// 或 wss://）
+    /// </summary>
+    public string WebSocketServerUrl { get; set; } = "";
+
+    /// <summary>
+    /// WebSocket 行情 API Key（可选）
+    /// </summary>
+    public string WebSocketApiKey { get; set; } = "";
+
+    /// <summary>
     /// 通达信安装目录（用于读取 vipdoc 下的 .day 日数据文件）
     /// </summary>
     public string TdxInstallDirectory { get; set; } = @"";

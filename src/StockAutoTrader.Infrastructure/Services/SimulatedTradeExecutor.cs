@@ -7,10 +7,18 @@ using StockAutoTrader.Infrastructure.Data;
 namespace StockAutoTrader.Infrastructure.Services;
 
 /// <summary>
-/// 模拟交易执行器（内置撮合）
+/// 模拟交易执行器（内置撮合，按 A 股真实费率扣费）
+/// 费用规则：
+///   佣金 = max(成交额 * 佣金率, 5.0)，买卖双向
+///   印花税 = 成交额 * 0.05%，仅卖出
+///   过户费 = 成交额 * 0.001%，买卖双向（沪市）
 /// </summary>
 public class SimulatedTradeExecutor : ITradeExecutor
 {
+    private const decimal MinCommission = 5.0m;
+    private const decimal StampTaxRate = 0.0005m;
+    private const decimal TransferFeeRate = 0.00001m;
+
     private readonly IOrderManager _orderManager;
     private readonly IPositionManager _positionManager;
     private readonly IAccountManager _accountManager;
@@ -20,19 +28,9 @@ public class SimulatedTradeExecutor : ITradeExecutor
     private readonly decimal _commissionRate;
     private readonly decimal _slippage;
 
-    /// <summary>
-    /// 交易源名称
-    /// </summary>
     public string Name => "SimulatedTradeExecutor";
-
-    /// <summary>
-    /// 是否模拟交易
-    /// </summary>
     public bool IsSimulated => true;
 
-    /// <summary>
-    /// 构造函数
-    /// </summary>
     public SimulatedTradeExecutor(
         IOrderManager orderManager,
         IPositionManager positionManager,
@@ -54,14 +52,15 @@ public class SimulatedTradeExecutor : ITradeExecutor
     }
 
     /// <summary>
-    /// 买入
+    /// 买入：成交额 + 佣金 + 过户费 从可用资金扣除
     /// </summary>
     public async Task<Order> BuyAsync(string stockCode, string stockName, int quantity, decimal price, OrderType orderType, CancellationToken cancellationToken = default)
     {
         var filledPrice = ApplySlippage(price, OrderSide.Buy);
         var amount = filledPrice * quantity;
-        var commission = amount * _commissionRate;
-        var totalCost = amount + commission;
+        var commission = Math.Max(amount * _commissionRate, MinCommission);
+        var transferFee = amount * TransferFeeRate;
+        var totalCost = amount + commission + transferFee;
 
         var canDeduct = await _accountManager.DeductForBuyAsync(totalCost, cancellationToken);
         if (!canDeduct)
@@ -80,6 +79,8 @@ public class SimulatedTradeExecutor : ITradeExecutor
             Price = price,
             FilledPrice = filledPrice,
             Commission = commission,
+            StampTax = 0m,
+            TransferFee = transferFee,
             Status = OrderStatus.Filled,
             FillTime = DateTime.Now,
             StrategyTrigger = "Auto"
@@ -89,13 +90,13 @@ public class SimulatedTradeExecutor : ITradeExecutor
         await _positionManager.BuyAsync(stockCode, stockName, quantity, filledPrice, DateTime.Now, cancellationToken);
         await PersistTradeAsync(order, cancellationToken);
 
-        _logger.Trade(stockCode, $"买入成交 {quantity} 股，成交价 {filledPrice:C}，佣金 {commission:C}");
+        _logger.Trade(stockCode, $"买入成交 {quantity} 股 @ {filledPrice:C}，佣金 {commission:C}，过户费 {transferFee:C}");
         _notificationService.Notify($"买入 {stockName}", $"{quantity} 股 @ {filledPrice}", isBuy: true);
         return order;
     }
 
     /// <summary>
-    /// 卖出
+    /// 卖出：成交额 - 佣金 - 印花税 - 过户费 回退可用资金
     /// </summary>
     public async Task<Order> SellAsync(string stockCode, string stockName, int quantity, decimal price, OrderType orderType, CancellationToken cancellationToken = default)
     {
@@ -107,8 +108,10 @@ public class SimulatedTradeExecutor : ITradeExecutor
 
         var filledPrice = ApplySlippage(price, OrderSide.Sell);
         var amount = filledPrice * quantity;
-        var commission = amount * _commissionRate;
-        var netAmount = amount - commission;
+        var commission = Math.Max(amount * _commissionRate, MinCommission);
+        var stampTax = amount * StampTaxRate;
+        var transferFee = amount * TransferFeeRate;
+        var netAmount = amount - commission - stampTax - transferFee;
 
         var order = new Order
         {
@@ -121,6 +124,8 @@ public class SimulatedTradeExecutor : ITradeExecutor
             Price = price,
             FilledPrice = filledPrice,
             Commission = commission,
+            StampTax = stampTax,
+            TransferFee = transferFee,
             Status = OrderStatus.Filled,
             FillTime = DateTime.Now,
             StrategyTrigger = "Auto"
@@ -131,46 +136,31 @@ public class SimulatedTradeExecutor : ITradeExecutor
         await _accountManager.RefundForSellAsync(netAmount, cancellationToken);
         await PersistTradeAsync(order, cancellationToken);
 
-        _logger.Trade(stockCode, $"卖出成交 {quantity} 股，成交价 {filledPrice:C}，佣金 {commission:C}");
+        _logger.Trade(stockCode, $"卖出成交 {quantity} 股 @ {filledPrice:C}，佣金 {commission:C}，印花税 {stampTax:C}，过户费 {transferFee:C}");
         _notificationService.Notify($"卖出 {stockName}", $"{quantity} 股 @ {filledPrice}", isBuy: false);
         return order;
     }
 
-    /// <summary>
-    /// 撤单
-    /// </summary>
     public Task<bool> CancelOrderAsync(string orderId, CancellationToken cancellationToken = default)
     {
         return _orderManager.CancelOrderAsync(orderId, cancellationToken);
     }
 
-    /// <summary>
-    /// 查询资金
-    /// </summary>
     public Task<Account> QueryAccountAsync(CancellationToken cancellationToken = default)
     {
         return _accountManager.GetAccountAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// 查询持仓
-    /// </summary>
     public Task<IReadOnlyList<Position>> QueryPositionsAsync(CancellationToken cancellationToken = default)
     {
         return _positionManager.GetAllPositionsAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// 查询委托
-    /// </summary>
     public Task<IReadOnlyList<Order>> QueryOrdersAsync(CancellationToken cancellationToken = default)
     {
         return _orderManager.GetAllOrdersAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// 查询成交（持久化）
-    /// </summary>
     public async Task<IReadOnlyList<Trade>> QueryTradesAsync(CancellationToken cancellationToken = default)
     {
         await using var context = _contextFactory.CreateDbContext();
@@ -180,9 +170,6 @@ public class SimulatedTradeExecutor : ITradeExecutor
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// 应用滑点
-    /// </summary>
     private decimal ApplySlippage(decimal price, OrderSide side)
     {
         return side == OrderSide.Buy
@@ -190,9 +177,6 @@ public class SimulatedTradeExecutor : ITradeExecutor
             : price * (1 - _slippage);
     }
 
-    /// <summary>
-    /// 生成拒绝订单
-    /// </summary>
     private async Task<Order> RejectOrderAsync(string stockCode, string stockName, OrderSide side, int quantity, decimal price, string reason)
     {
         var order = new Order
@@ -211,9 +195,6 @@ public class SimulatedTradeExecutor : ITradeExecutor
         return order;
     }
 
-    /// <summary>
-    /// 持久化成交记录
-    /// </summary>
     private async Task PersistTradeAsync(Order order, CancellationToken cancellationToken)
     {
         await using var context = _contextFactory.CreateDbContext();
@@ -227,6 +208,8 @@ public class SimulatedTradeExecutor : ITradeExecutor
             Price = order.FilledPrice,
             Amount = order.FilledPrice * order.FilledQuantity,
             Commission = order.Commission,
+            StampTax = order.StampTax,
+            TransferFee = order.TransferFee,
             TradeTime = order.FillTime ?? order.OrderTime
         };
         context.Trades.Add(trade);

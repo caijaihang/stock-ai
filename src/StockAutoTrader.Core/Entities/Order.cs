@@ -45,6 +45,12 @@ public partial class Order : ObservableObject
     private decimal _commission;
 
     [ObservableProperty]
+    private decimal _stampTax;
+
+    [ObservableProperty]
+    private decimal _transferFee;
+
+    [ObservableProperty]
     private string _strategyTrigger = string.Empty;
 
     [ObservableProperty]
